@@ -83,6 +83,13 @@ GECKOTERMINAL_MIN_INTERVAL = _float("GECKOTERMINAL_MIN_INTERVAL", 3.0)
 GECKOTERMINAL_COOLDOWN_START = _float("GECKOTERMINAL_COOLDOWN_START", 60)
 GECKOTERMINAL_COOLDOWN_MAX = _float("GECKOTERMINAL_COOLDOWN_MAX", 1800)
 
+# --- Публикация статистики на сайт ---------------------------------------
+# Бот остаётся личным, но накопленные им цифры выкладываются на deftools.xyz
+# в виде статического JSON - страница живёт даже когда бот выключен.
+PUBLISH_ENABLED = _int("PUBLISH_ENABLED", 1) == 1
+PUBLISH_INTERVAL_SECONDS = _int("PUBLISH_INTERVAL_SECONDS", 3600)
+SITE_REPO_PATH = os.environ.get("SITE_REPO_PATH", str(BASE_DIR.parent / "base-tools"))
+
 # --- Логи ----------------------------------------------------------------
 LOG_MAX_BYTES = _int("LOG_MAX_BYTES", 5_000_000)
 LOG_BACKUP_COUNT = _int("LOG_BACKUP_COUNT", 3)

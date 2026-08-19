@@ -1,0 +1,6 @@
+{
+  "name": "meme-scout-public-bot",
+  "private": true,
+  "type": "module",
+  "description": "Public read-only Telegram bot for meme-scout stats, runs on Cloudflare Workers"
+}
