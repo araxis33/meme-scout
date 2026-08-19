@@ -18,9 +18,24 @@ NETWORKS = {
 }
 
 
+def _priority(result, liquidity_usd) -> str:
+    """Пушим сразу только то, что реально стоит внимания.
+
+    Красные и мелкие по ликвидности уходят в дайджест - именно они и давали
+    основную часть шума (десятки сообщений в день).
+    """
+    if result.verdict == "red":
+        return bot.PRIORITY_LOW
+    if (liquidity_usd or 0) < config.PUSH_MIN_LIQUIDITY_USD:
+        return bot.PRIORITY_LOW
+    return bot.PRIORITY_HIGH
+
+
 async def _handle_candidate(application, chain: str, token_address: str, symbol: str,
                              name: str, liquidity_usd, price_usd, market_cap_usd):
     if db.is_token_seen(chain, token_address):
+        return
+    if db.is_ignored(chain, token_address):
         return
 
     if (liquidity_usd or 0) < config.MIN_LIQUIDITY_USD:
@@ -35,6 +50,9 @@ async def _handle_candidate(application, chain: str, token_address: str, symbol:
     db.mark_token_seen(chain, token_address, symbol, name, result.score, result.verdict,
                         liquidity_usd, market_cap_usd)
     db.add_to_watchlist(chain, token_address, baseline_price=price_usd)
+    # Снимок на момент алерта - точка отсчёта для «выжившего» и табло точности.
+    db.record_outcome_start(chain, token_address, symbol, result.score, result.verdict,
+                             price_usd, liquidity_usd)
 
     token = {
         "token_address": token_address,
@@ -42,8 +60,20 @@ async def _handle_candidate(application, chain: str, token_address: str, symbol:
         "name": name,
         "liquidity_usd": liquidity_usd,
     }
-    await bot.send_alert(application, bot.format_new_token_alert(chain, token, result))
-    log.info("New token alert sent: %s %s score=%s verdict=%s", chain, symbol, result.score, result.verdict)
+    priority = _priority(result, liquidity_usd)
+    liquidity_note = f"${liquidity_usd:,.0f}" if liquidity_usd else "н/д"
+    pushed = await bot.route_alert(
+        application,
+        chain=chain,
+        address=token_address,
+        symbol=symbol,
+        alert_type="new_token",
+        text=bot.format_new_token_alert(chain, token, result),
+        priority=priority,
+        summary=f"{result.verdict_emoji} {symbol} - score {result.score}, ликвидность {liquidity_note}",
+    )
+    log.info("New token %s: %s %s score=%s verdict=%s", "pushed" if pushed else "queued",
+             chain, symbol, result.score, result.verdict)
 
 
 async def run_discovery(application, chain: str):

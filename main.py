@@ -1,20 +1,32 @@
 import asyncio
 import logging
+import logging.handlers
 import signal
 
 import bot
 import config
 import db
-from watchers import discovery, pump_dump
+from watchers import digest, discovery, outcomes, pump_dump
+
+# Лог ротируется: без этого файл разросся до 658 МБ за месяц.
+_file_handler = logging.handlers.RotatingFileHandler(
+    config.BASE_DIR / "meme-scout-log.txt",
+    maxBytes=config.LOG_MAX_BYTES,
+    backupCount=config.LOG_BACKUP_COUNT,
+    encoding="utf-8",
+)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(config.BASE_DIR / "meme-scout-log.txt", encoding="utf-8"),
-    ],
+    handlers=[logging.StreamHandler(), _file_handler],
 )
+# httpx логировал каждый HTTP-запрос на INFO - это и был основной объём лога.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+
 log = logging.getLogger("meme-scout.main")
 
 
@@ -46,6 +58,8 @@ async def main():
         asyncio.create_task(discovery.run_discovery_base(application)),
         asyncio.create_task(discovery.run_discovery_robinhood(application)),
         asyncio.create_task(pump_dump.run_pump_dump_watcher(application)),
+        asyncio.create_task(outcomes.run_outcome_watcher(application)),
+        asyncio.create_task(digest.run_digest_watcher(application)),
     ]
 
     try:

@@ -2,3 +2,4 @@ httpx>=0.27
 web3>=6.15
 python-telegram-bot>=21.0
 python-dotenv>=1.0
+matplotlib>=3.8
