@@ -46,3 +46,43 @@ LIQUIDITY_DROP_THRESHOLD_PCT = _float("LIQUIDITY_DROP_THRESHOLD_PCT", 50)
 ALERT_COOLDOWN_SECONDS = _int("ALERT_COOLDOWN_SECONDS", 3600)
 
 DB_PATH = str(BASE_DIR / os.environ.get("DB_PATH", "meme_scout.sqlite3"))
+
+# --- Тихий режим / приоритет алертов -------------------------------------
+# Новый токен пушится сразу, только если он не 🔴 и ликвидность не ниже этого
+# порога. Всё остальное копится в дайджест-очереди.
+PUSH_MIN_LIQUIDITY_USD = _float("PUSH_MIN_LIQUIDITY_USD", 100000)
+
+# --- Дневной дайджест ----------------------------------------------------
+DIGEST_ENABLED = _int("DIGEST_ENABLED", 1) == 1
+DIGEST_HOUR = _int("DIGEST_HOUR", 9)          # локальный час отправки
+DIGEST_MINUTE = _int("DIGEST_MINUTE", 0)
+DIGEST_POLL_SECONDS = _int("DIGEST_POLL_SECONDS", 300)
+
+# --- «Выживший» + отслеживание исходов -----------------------------------
+OUTCOME_POLL_SECONDS = _int("OUTCOME_POLL_SECONDS", 600)
+SURVIVOR_MIN_AGE_HOURS = _float("SURVIVOR_MIN_AGE_HOURS", 24)
+# Ликвидность на отметке 24ч должна быть не ниже стартовой * этот коэффициент.
+SURVIVOR_MIN_LIQ_RATIO = _float("SURVIVOR_MIN_LIQ_RATIO", 1.0)
+SURVIVOR_MIN_VOLUME_USD = _float("SURVIVOR_MIN_VOLUME_USD", 10000)
+
+# --- Здоровье watchlist (лечит 429 от GeckoTerminal) ---------------------
+# За один цикл опрашиваем не больше стольких токенов (самые давно не
+# проверявшиеся - первыми), иначе 1600+ записей не укладываются в интервал.
+WATCHLIST_BATCH = _int("WATCHLIST_BATCH", 120)
+WATCHLIST_CONCURRENCY = _int("WATCHLIST_CONCURRENCY", 4)
+# Токен вылетает из watchlist после стольких подряд проверок с мёртвой
+# ликвидностью, либо по возрасту (ручные /watch не трогаем).
+WATCHLIST_DEAD_LIQUIDITY_USD = _float("WATCHLIST_DEAD_LIQUIDITY_USD", 1000)
+WATCHLIST_DEAD_CHECKS = _int("WATCHLIST_DEAD_CHECKS", 3)
+WATCHLIST_MAX_AGE_DAYS = _float("WATCHLIST_MAX_AGE_DAYS", 14)
+
+# Минимальный интервал между запросами к GeckoTerminal (free tier ~30/мин).
+GECKOTERMINAL_MIN_INTERVAL = _float("GECKOTERMINAL_MIN_INTERVAL", 3.0)
+# После 429 GeckoTerminal банит IP на заметное время - уходим в паузу с
+# удваивающимся интервалом, вместо того чтобы долбиться и продлевать бан.
+GECKOTERMINAL_COOLDOWN_START = _float("GECKOTERMINAL_COOLDOWN_START", 60)
+GECKOTERMINAL_COOLDOWN_MAX = _float("GECKOTERMINAL_COOLDOWN_MAX", 1800)
+
+# --- Логи ----------------------------------------------------------------
+LOG_MAX_BYTES = _int("LOG_MAX_BYTES", 5_000_000)
+LOG_BACKUP_COUNT = _int("LOG_BACKUP_COUNT", 3)
