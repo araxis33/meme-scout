@@ -1,0 +1,9 @@
+name = "meme-scout-bot"
+main = "worker.js"
+compatibility_date = "2026-08-19"
+
+# Секреты НЕ хранятся в этом файле - они ставятся отдельно и лежат
+# зашифрованными на стороне Cloudflare:
+#   npx wrangler secret put BOT_TOKEN        - токен нового бота от BotFather
+#   npx wrangler secret put WEBHOOK_SECRET   - произвольная строка, ею Telegram
+#                                              подписывает каждый запрос
