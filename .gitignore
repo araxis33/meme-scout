@@ -7,3 +7,6 @@ meme-scout-log.txt
 run_stdout.log
 run_stderr.log
 meme-scout-task.xml
+
+# Локальный кэш wrangler - не для репозитория.
+.wrangler/
