@@ -6,7 +6,7 @@ import signal
 import bot
 import config
 import db
-from watchers import digest, discovery, outcomes, publish, pump_dump
+from watchers import digest, discovery, outcomes, probation, publish, pump_dump
 
 # Лог ротируется: без этого файл разросся до 658 МБ за месяц.
 _file_handler = logging.handlers.RotatingFileHandler(
@@ -57,6 +57,7 @@ async def main():
     tasks = [
         asyncio.create_task(discovery.run_discovery_base(application)),
         asyncio.create_task(discovery.run_discovery_robinhood(application)),
+        asyncio.create_task(probation.run_probation_watcher(application)),
         asyncio.create_task(pump_dump.run_pump_dump_watcher(application)),
         asyncio.create_task(outcomes.run_outcome_watcher(application)),
         asyncio.create_task(digest.run_digest_watcher(application)),
