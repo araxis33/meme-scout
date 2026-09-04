@@ -87,6 +87,24 @@ def _normalize_pool(item: dict, included: dict) -> dict | None:
         except (TypeError, ValueError):
             return default
 
+    def _window(block: dict, key: str, default=0.0):
+        try:
+            return float((block or {}).get(key) or default)
+        except (TypeError, ValueError):
+            return default
+
+    volume = attrs.get("volume_usd") or {}
+    txns = attrs.get("transactions") or {}
+    changes = attrs.get("price_change_percentage") or {}
+    tx_h1 = txns.get("h1") or {}
+    tx_h24 = txns.get("h24") or {}
+
+    def _count(block: dict, key: str) -> int:
+        try:
+            return int((block or {}).get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+
     return {
         "token_address": token_address,
         "symbol": token_attrs.get("symbol") or "?",
@@ -95,8 +113,20 @@ def _normalize_pool(item: dict, included: dict) -> dict | None:
         "price_usd": _f("base_token_price_usd"),
         "liquidity_usd": _f("reserve_in_usd"),
         "market_cap_usd": _f("market_cap_usd") or _f("fdv_usd"),
-        "volume_24h": float(((attrs.get("volume_usd") or {}).get("h24")) or 0.0),
+        "volume_24h": _window(volume, "h24"),
         "created_at": attrs.get("pool_created_at"),
+        # Ниже - то, чего в первой версии не было вовсе: сигналы реального
+        # спроса. Без них новый пул невозможно отличить от лаунчпадной пустышки.
+        "volume_h1": _window(volume, "h1"),
+        "volume_h6": _window(volume, "h6"),
+        "buys_h1": _count(tx_h1, "buys"),
+        "sells_h1": _count(tx_h1, "sells"),
+        "buyers_h1": _count(tx_h1, "buyers"),
+        "sellers_h1": _count(tx_h1, "sellers"),
+        "buyers_h24": _count(tx_h24, "buyers"),
+        "sellers_h24": _count(tx_h24, "sellers"),
+        "price_change_h1": _window(changes, "h1"),
+        "price_change_h24": _window(changes, "h24"),
     }
 
 
@@ -146,3 +176,41 @@ async def get_pool_by_token(network: str, token_address: str) -> dict | None:
         if not pools:
             return None
         return max(pools, key=lambda p: p["liquidity_usd"])
+
+
+async def get_pools_multi(network: str, pool_addresses: list[str]) -> dict[str, dict]:
+    """Свежие метрики сразу по многим пулам: адрес пула -> нормализованный пул.
+
+    Критично для лимитов: probation проверяет десятки кандидатов, а этот
+    эндпоинт отдаёт до 30 пулов за ОДИН запрос вместо тридцати запросов.
+    """
+    out: dict[str, dict] = {}
+    if not pool_addresses:
+        return out
+    chunks = [pool_addresses[i:i + 30] for i in range(0, len(pool_addresses), 30)]
+    async with httpx.AsyncClient(timeout=25, headers=_HEADERS) as client:
+        for chunk in chunks:
+            if not await _acquire():
+                break
+            joined = ",".join(chunk)
+            try:
+                resp = await client.get(
+                    f"{BASE_URL}/networks/{network}/pools/multi/{joined}",
+                    params={"include": "base_token"},
+                )
+            except httpx.HTTPError:
+                log.warning("multi-pool запрос не прошёл (%s пулов)", len(chunk))
+                continue
+            if resp.status_code == 429:
+                _note_rate_limited(f"{network} pools/multi")
+                break
+            if resp.status_code != 200:
+                continue
+            _note_ok()
+            payload = resp.json()
+            included = _index_included(payload)
+            for item in payload.get("data", []):
+                pool = _normalize_pool(item, included)
+                if pool and pool.get("pool_address"):
+                    out[pool["pool_address"].lower()] = pool
+    return out
