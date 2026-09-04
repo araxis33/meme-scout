@@ -19,12 +19,20 @@ import db
 log = logging.getLogger("meme-scout.bot")
 
 EXPLORER_LINKS = {
+    # Порядок важен: первым идёт то, что открывают чаще всего - график, а не
+    # страница адреса в обозревателе блоков.
     "base": {
-        "basescan": "https://basescan.org/address/{addr}",
         "dexscreener": "https://dexscreener.com/base/{addr}",
         "geckoterminal": "https://www.geckoterminal.com/base/tokens/{addr}",
+        "basescan": "https://basescan.org/address/{addr}",
     },
     "robinhood": {
+        # DexScreener и GeckoTerminal проиндексировали Robinhood Chain уже
+        # после того, как бот был написан, поэтому их тут не было. Сеть у
+        # обоих называется 'robinhood'; GeckoTerminal - вообще тот самый
+        # источник, из которого бот берёт цифры по этой сети.
+        "dexscreener": "https://dexscreener.com/robinhood/{addr}",
+        "geckoterminal": "https://www.geckoterminal.com/robinhood/tokens/{addr}",
         "blockscout": "https://robinhoodchain.blockscout.com/address/{addr}",
         "robinscan": "https://robinscan.io/address/{addr}",
     },
@@ -42,6 +50,7 @@ ALERT_TITLE = {
     "dump": "дамп",
     "rug": "rug pull",
     "survivor": "выживший",
+    "confirmed": "спрос подтверждён",
 }
 
 
@@ -95,6 +104,69 @@ def format_new_token_alert(chain: str, token: dict, score_result) -> str:
         f"{reasons}"
         f"{limited_note}\n\n"
         f"{links_block(chain, addr)}"
+    )
+
+
+def _plural(n: int, one: str, few: str, many: str) -> str:
+    """Русские окончания: 1 проект, 2 проекта, 5 проектов."""
+    if n % 100 in (11, 12, 13, 14):
+        return many
+    last = n % 10
+    if last == 1:
+        return one
+    if last in (2, 3, 4):
+        return few
+    return many
+
+
+def format_lookalike_warning(symbol: str, lookalikes: dict, window_days: float) -> str:
+    """Предупреждение о токенах-двойниках. Пусто, если их нет."""
+    if not lookalikes:
+        return ""
+    parts = []
+    same_name = lookalikes.get("same_name") or 0
+    same_ticker = lookalikes.get("same_ticker") or 0
+    if same_name:
+        raz = _plural(same_name, "раз", "раза", "раз")
+        parts.append(f"точно такой же токен выходил ещё {same_name} {raz} с других адресов")
+    if same_ticker:
+        proj = _plural(same_ticker, "проект", "проекта", "проектов")
+        drug = _plural(same_ticker, "другой", "других", "других")
+        parts.append(f"тикер {html.escape(str(symbol))} за это же время использовали "
+                     f"{same_ticker} {drug} {proj}")
+    if not parts:
+        return ""
+    return ("\n⚠️ <b>Двойники за {d:.0f} дн.:</b> {body}.\n"
+            "<i>Сверь адрес контракта - копии выглядят неотличимо.</i>\n").format(
+        d=window_days, body="; ".join(parts))
+
+
+def format_confirmed_token_alert(chain: str, address: str, symbol: str, name: str,
+                                 pool: dict, cand: dict, result, age_hours: float,
+                                 lookalikes: dict | None = None) -> str:
+    """Главный сигнал бота: токен прожил час-другой и показал живую торговлю.
+
+    Намеренно на первом месте стоят цифры спроса, а не score контракта:
+    именно подмена одного другим и превращала выдачу в поток мусора.
+    """
+    liq_0 = cand.get("liq_0")
+    liq_now = pool.get("liquidity_usd")
+    reasons = "\n".join(f"  {r}" for r in result.reasons)
+    safety = cand.get("score")
+    safety_line = f"Проверка контракта: {safety}/100\n" if safety is not None else ""
+    return (
+        f"✅ <b>Спрос подтверждён: {html.escape(str(symbol))}</b> ({html.escape(str(name))})\n"
+        f"Сеть: {CHAIN_LABEL[chain]}\n"
+        f"Адрес: <code>{address}</code>\n\n"
+        f"<b>Сила сигнала: {result.score}/100</b>\n"
+        f"{reasons}\n\n"
+        f"Найден {age_hours:.1f} ч назад при ликвидности {_fmt_usd(liq_0)}, "
+        f"сейчас {_fmt_usd(liq_now)}\n"
+        f"{safety_line}"
+        f"{format_lookalike_warning(symbol, lookalikes, config.LOOKALIKE_WINDOW_DAYS)}\n"
+        f"<i>Токен не показывался сразу: он ждал на испытательном сроке, "
+        f"пока рынок подтвердит интерес.</i>\n\n"
+        f"{links_block(chain, address)}"
     )
 
 
@@ -165,7 +237,12 @@ def build_alert_keyboard(chain: str, address: str, alert_type: str) -> InlineKey
             InlineKeyboardButton("📈 График", callback_data=cb("c")),
         ]
     ]
-    if alert_type in ("new_token", "survivor", "pump"):
+    # Кнопка-ссылка: открывает график на DexScreener в один тап, без поиска
+    # нужной ссылки в тексте. Работает для обеих сетей.
+    dex_url = EXPLORER_LINKS.get(chain, {}).get("dexscreener")
+    if dex_url:
+        rows.append([InlineKeyboardButton("🔗 DexScreener", url=dex_url.format(addr=address))])
+    if alert_type in ("new_token", "confirmed", "survivor", "pump"):
         rows.append([InlineKeyboardButton("💰 Купить", callback_data=cb("b"))])
     rows.append(
         [
@@ -357,6 +434,9 @@ async def _reply_chart(query, chain: str, address: str):
 
 HELP_TEXT = (
     "Meme-Scout. Слежу за новыми токенами на Base и Robinhood Chain.\n"
+    "Показываю только те, что доказали живую торговлю: новые находки сначала\n"
+    "молча ждут на испытательном сроке и попадают в чат, лишь когда их\n"
+    "реально начали покупать разные люди.\n"
     "⚠️ Для Robinhood Chain часть проверок недоступна - сеть совсем новая.\n\n"
     "Команды:\n"
     "/status - статус и размер watchlist\n"
@@ -365,6 +445,7 @@ HELP_TEXT = (
     "/chart &lt;base|robinhood&gt; &lt;адрес&gt; - график цены и ликвидности\n"
     "/watch &lt;base|robinhood&gt; &lt;адрес&gt; - добавить в watchlist\n"
     "/watchlist - показать watchlist\n"
+    "/candidates - кто сейчас на испытательном сроке и чего ждёт\n"
     "/ignore &lt;base|robinhood&gt; &lt;адрес&gt; - больше не алертить\n"
     "/ignored - список игнора (и как убрать)\n"
     "/unignore &lt;base|robinhood&gt; &lt;адрес&gt; - вернуть из игнора\n"
@@ -464,6 +545,33 @@ async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
+async def cmd_candidates(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Кто сейчас на испытательном сроке и почему ещё не показан."""
+    if not _is_authorized(update):
+        return
+    pending = db.get_probation_pending(15)
+    day = db.probation_counts(time.time() - 86400)
+    header = (
+        f"За сутки: взято на карандаш {sum(day.values())}, "
+        f"подтвердили спрос {day.get('promoted', 0)}, "
+        f"отсеяно {day.get('rejected', 0)}, "
+        f"ещё думают {day.get('pending', 0)}"
+    )
+    if not pending:
+        await update.message.reply_text(header + "\n\nСейчас в очереди никого.")
+        return
+    lines = [header, "", "В очереди (лучшие сверху):"]
+    for c in pending:
+        age = (time.time() - c["added_at"]) / 3600
+        lines.append(
+            f"  {c['symbol']} - {age:.1f} ч, покупателей максимум {c['best_buyers']}, "
+            f"объём ${c['best_volume']:,.0f}"
+        )
+        if c.get("last_reason"):
+            lines.append(f"     ждём: {c['last_reason']}")
+    await update.message.reply_text("\n".join(lines))
+
+
 async def cmd_ignore(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_authorized(update):
         return
@@ -554,6 +662,7 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("chart", cmd_chart))
     application.add_handler(CommandHandler("watch", cmd_watch))
     application.add_handler(CommandHandler("watchlist", cmd_watchlist))
+    application.add_handler(CommandHandler("candidates", cmd_candidates))
     application.add_handler(CommandHandler("ignore", cmd_ignore))
     application.add_handler(CommandHandler("unignore", cmd_unignore))
     application.add_handler(CommandHandler("ignored", cmd_ignored))
