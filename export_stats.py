@@ -119,6 +119,56 @@ def build_stats() -> dict:
         )
     ]
 
+    # Самая честная цифра, которую бот может о себе сообщить: предсказывал ли
+    # его вердикт хоть что-нибудь. Ответ - нет, и это надо показывать, а не
+    # прятать за словами «прошёл проверки».
+    verdict_outcomes = [
+        {
+            "verdict": r["verdict"],
+            "checked": r["n"],
+            "held_liquidity": r["held"],
+            "still_trading": r["traded"],
+        }
+        for r in conn.execute(
+            """SELECT verdict, COUNT(*) n,
+                      SUM(CASE WHEN liq_24h >= liq_0 * 0.5 THEN 1 ELSE 0 END) held,
+                      SUM(CASE WHEN COALESCE(volume_24h,0) >= 1000 THEN 1 ELSE 0 END) traded
+               FROM outcomes
+               WHERE checked_24h=1 AND liq_0 > 0 AND liq_24h IS NOT NULL
+                     AND verdict IN ('green','yellow','red')
+               GROUP BY verdict ORDER BY n DESC"""
+        )
+    ]
+
+    probation_states = {
+        r["state"]: r["n"]
+        for r in conn.execute("SELECT state, COUNT(*) n FROM probation GROUP BY state")
+    }
+
+    # Токены, доказавшие реальный спрос - единственный список на странице,
+    # который что-то значит. Раньше на его месте стояли «прошедшие проверки».
+    confirmed = [
+        {
+            "symbol": r["symbol"] or "?",
+            "chain": r["chain"],
+            "address": r["address"],
+            "buyers_h1": r["best_buyers"],
+            "volume_h1": r["best_volume"],
+            "liquidity_usd": r["liq_0"],
+            "confirmed_at": int(r["added_at"]),
+            "hours_waited": round(max(0.0, (r["closed_guess"] or 0)) / 3600, 1),
+        }
+        for r in conn.execute(
+            """SELECT p.symbol, p.chain, p.address, p.best_buyers, p.best_volume,
+                      p.added_at, o.liq_0, (o.alerted_at - p.added_at) closed_guess
+               FROM probation p LEFT JOIN outcomes o
+                 ON o.chain = p.chain AND o.address = p.address
+               WHERE p.state='promoted'
+               ORDER BY p.added_at DESC LIMIT ?""",
+            (RECENT_FINDS,),
+        )
+    ]
+
     alerts = {
         r["alert_type"]: r["n"]
         for r in conn.execute("SELECT alert_type, COUNT(*) n FROM alerts_sent GROUP BY alert_type")
@@ -136,6 +186,7 @@ def build_stats() -> dict:
             "base": chains.get("base", 0),
             "robinhood": chains.get("robinhood", 0),
             "below_liquidity_threshold": verdicts.get("skipped_low_liquidity", 0),
+            "spam_filtered": verdicts.get("spam", 0),
             "scored": scored,
             "green": verdicts.get("green", 0),
             "yellow": verdicts.get("yellow", 0),
@@ -144,6 +195,13 @@ def build_stats() -> dict:
         "liquidity_threshold_usd": config.MIN_LIQUIDITY_USD,
         "daily": daily,
         "recent_finds": finds,
+        "confirmed": confirmed,
+        "verdict_outcomes": verdict_outcomes,
+        "probation": {
+            "waiting": probation_states.get("pending", 0),
+            "confirmed": probation_states.get("promoted", 0),
+            "dropped": probation_states.get("rejected", 0),
+        },
         "recent_drains": drains,
         "survivors": survivors,
         "alerts": alerts,
@@ -152,14 +210,27 @@ def build_stats() -> dict:
         # Честная оговорка, которую страница показывает рядом с графиком:
         # счётчики по дням зависят от того, сколько сканер реально отработал.
         "caveat": "Daily counts reflect what the scanner saw, so they dip when it was rate-limited or offline.",
-        "disclaimer": "Automated checks against public APIs. Not advice, not an endorsement - names can be copied and checks can be wrong. Verify anything yourself before touching it.",
+        "disclaimer": "Automated checks against public APIs. Not advice, not an endorsement - names can be copied and checks can be wrong. Contract checks find traps in the code; they cannot tell you whether a token is worth holding. Verify anything yourself before touching it.",
     }
     conn.close()
     return stats
 
 
+# Бот запускается через pythonw, у которого своей консоли нет, поэтому каждый
+# вызов git открывал бы новое чёрное окно на долю секунды - раз в час, а при
+# коммите и пуше по четыре подряд. CREATE_NO_WINDOW убирает мигание.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
 def _run(cmd, cwd):
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120)
+    return subprocess.run(
+        cmd,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        creationflags=_NO_WINDOW,
+    )
 
 
 def publish(site_repo: Path, stats: dict, push: bool = True) -> bool:
