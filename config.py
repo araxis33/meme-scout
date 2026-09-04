@@ -93,3 +93,55 @@ SITE_REPO_PATH = os.environ.get("SITE_REPO_PATH", str(BASE_DIR.parent / "base-to
 # --- Логи ----------------------------------------------------------------
 LOG_MAX_BYTES = _int("LOG_MAX_BYTES", 5_000_000)
 LOG_BACKUP_COUNT = _int("LOG_BACKUP_COUNT", 3)
+
+# --- Испытательный срок (probation): отбор по реальному спросу ------------
+# Главная проблема первой версии: токен оценивался в момент создания пула,
+# когда торгов ещё нет физически. Проверки контракта проходят все свежие
+# лаунчпадные клоны, поэтому в выдачу шёл сплошной мусор со score 90+.
+# Теперь находка не пушится сразу, а сидит в probation и должна доказать
+# спрос: реальный объём, много разных покупателей, неслитая ликвидность.
+PROBATION_ENABLED = _int("PROBATION_ENABLED", 1) == 1
+PROBATION_POLL_SECONDS = _int("PROBATION_POLL_SECONDS", 120)
+# Через сколько минут после находки делать первую проверку и с каким шагом.
+PROBATION_FIRST_CHECK_MINUTES = _float("PROBATION_FIRST_CHECK_MINUTES", 45)
+PROBATION_RECHECK_MINUTES = _float("PROBATION_RECHECK_MINUTES", 90)
+# Столько часов даётся на то, чтобы проявить себя, потом кандидат отчисляется.
+PROBATION_MAX_HOURS = _float("PROBATION_MAX_HOURS", 12)
+PROBATION_BATCH = _int("PROBATION_BATCH", 40)
+
+# Ворота спроса. Все должны быть пройдены одновременно.
+# Ликвидность не должна быть слита относительно момента находки.
+PROBATION_MIN_LIQ_RATIO = _float("PROBATION_MIN_LIQ_RATIO", 0.7)
+# Живой объём за час. Клоны-пустышки с LP $450k имеют объём $0-20 - отсекается.
+PROBATION_MIN_VOLUME_H1 = _float("PROBATION_MIN_VOLUME_H1", 5000)
+# Объём относительно ликвидности: снизу - что торговля вообще есть,
+# сверху - защита от wash-trading (объём в разы больше пула = крутят сами).
+PROBATION_MIN_VOL_LIQ = _float("PROBATION_MIN_VOL_LIQ", 0.05)
+PROBATION_MAX_VOL_LIQ = _float("PROBATION_MAX_VOL_LIQ", 20)
+# Сколько РАЗНЫХ кошельков купили за час. Главный признак живого интереса:
+# один бот может накрутить объём, но не может быть 25 разными покупателями.
+PROBATION_MIN_BUYERS_H1 = _int("PROBATION_MIN_BUYERS_H1", 25)
+# Покупателей должно быть не сильно меньше продавцов, иначе это выход толпы.
+PROBATION_MIN_BUY_SELL_RATIO = _float("PROBATION_MIN_BUY_SELL_RATIO", 0.5)
+# Цена не должна успеть сложиться к моменту проверки.
+PROBATION_MAX_PRICE_DROP_PCT = _float("PROBATION_MAX_PRICE_DROP_PCT", 50)
+
+# --- Антиспам на этапе находки -------------------------------------------
+# Боты-фабрики штампуют пачки пулов с одинаковой ликвидностью за секунды
+# (в базе: DERP/CLOWN/SGOOSE/BFRG/CFRG - пять токенов за 14 секунд, LP $447k).
+CLONE_BATCH_ENABLED = _int("CLONE_BATCH_ENABLED", 1) == 1
+CLONE_BATCH_WINDOW_SECONDS = _float("CLONE_BATCH_WINDOW_SECONDS", 900)
+CLONE_BATCH_LIQ_TOLERANCE = _float("CLONE_BATCH_LIQ_TOLERANCE", 0.02)
+CLONE_BATCH_MIN_COUNT = _int("CLONE_BATCH_MIN_COUNT", 3)
+# Один и тот же мем перезапускают снова и снова (lilcobie 4 раза за сутки).
+RELAUNCH_WINDOW_DAYS = _float("RELAUNCH_WINDOW_DAYS", 7)
+# Сколько копий одного мема (тот же тикер И то же название) допустимо за окно.
+# 1 = проходит только первая находка, всё последующее с новых адресов - дубль.
+# На истории за 7 дней: openhuman выходил 18 раз, MRBASE 5, lilcobie 4.
+RELAUNCH_MAX_COPIES = _int("RELAUNCH_MAX_COPIES", 1)
+
+# Окно, в котором ищем двойников для ПРЕДУПРЕЖДЕНИЯ (не для отсева).
+# Совпадение только по тикеру отсевом быть не может: 'AGENT/Circle Agent' и
+# 'AGENT/Agentic Trading Bot' - разные проекты. Но знать об этом полезно,
+# потому что так же выглядит и подделка под чужой токен.
+LOOKALIKE_WINDOW_DAYS = _float("LOOKALIKE_WINDOW_DAYS", 7)
