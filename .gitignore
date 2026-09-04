@@ -10,3 +10,4 @@ meme-scout-task.xml
 
 # Локальный кэш wrangler - не для репозитория.
 .wrangler/
+meme-scout-log.txt.*
