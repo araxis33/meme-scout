@@ -18,6 +18,8 @@ os.environ.setdefault("TELEGRAM_CHAT_ID", "1")
 import config  # noqa: E402
 import db  # noqa: E402
 from sources import geckoterminal  # noqa: E402
+import bot  # noqa: E402
+import traction  # noqa: E402
 from watchers import digest, discovery, outcomes, pump_dump  # noqa: E402
 
 
@@ -104,22 +106,7 @@ class TrackedTests(unittest.TestCase):
 
 
 class AlertPriorityTests(unittest.TestCase):
-    """Тихий режим: что пушится сразу, а что копится до дайджеста."""
-
-    def test_healthy_token_with_deep_liquidity_is_pushed(self):
-        priority = discovery._priority(_Verdict("green"), config.PUSH_MIN_LIQUIDITY_USD + 1)
-        self.assertEqual(priority, "high")
-
-    def test_healthy_token_with_thin_liquidity_is_queued(self):
-        priority = discovery._priority(_Verdict("green"), config.PUSH_MIN_LIQUIDITY_USD - 1)
-        self.assertEqual(priority, "low")
-
-    def test_red_token_is_queued_even_with_deep_liquidity(self):
-        priority = discovery._priority(_Verdict("red"), config.PUSH_MIN_LIQUIDITY_USD * 10)
-        self.assertEqual(priority, "low")
-
-    def test_missing_liquidity_is_queued(self):
-        self.assertEqual(discovery._priority(_Verdict("yellow"), None), "low")
+    """Приоритет алертов по движениям цены."""
 
     def test_move_on_tracked_token_is_pushed(self):
         self.assertEqual(pump_dump._priority(True), "high")
@@ -273,6 +260,8 @@ class AlertButtonTests(unittest.TestCase):
                 keyboard = bot.build_alert_keyboard(chain, self.ADDR, alert_type)
                 for row in keyboard.inline_keyboard:
                     for button in row:
+                        if button.url:
+                            continue  # кнопка-ссылка, callback_data у неё нет
                         self.assertLessEqual(len(button.callback_data.encode()), 64)
 
     def test_callback_data_round_trips(self):
@@ -281,6 +270,8 @@ class AlertButtonTests(unittest.TestCase):
         keyboard = bot.build_alert_keyboard("robinhood", self.ADDR, "new_token")
         for row in keyboard.inline_keyboard:
             for button in row:
+                if button.url:
+                    continue  # кнопка-ссылка открывается напрямую, без callback
                 parsed = bot._parse_cb(button.callback_data)
                 self.assertIsNotNone(parsed)
                 _, chain, address = parsed
@@ -316,3 +307,226 @@ class ChartTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _pool(**kw):
+    """Пул с параметрами живого, но скучного токена - тесты меняют что нужно."""
+    base = dict(
+        liquidity_usd=70000.0, price_usd=1.0,
+        volume_h1=40000.0, buyers_h1=60, sellers_h1=40, buys_h1=90, sells_h1=60,
+    )
+    base.update(kw)
+    return base
+
+
+class TractionTests(unittest.TestCase):
+    """Ворота спроса - то, чего в первой версии бота не было вовсе."""
+
+    def test_live_token_passes(self):
+        result = traction.evaluate(_pool(), liq_0=70000.0, price_0=1.0)
+        self.assertTrue(result.passed, result.fail_reason)
+        self.assertGreater(result.score, 0)
+
+    def test_empty_clone_with_huge_liquidity_is_rejected(self):
+        """Реальный случай из базы: LP $450k, объём за час - $12, торгов нет."""
+        pool = _pool(liquidity_usd=450000.0, volume_h1=12.0, buyers_h1=0,
+                     sellers_h1=0, buys_h1=0, sells_h1=0)
+        result = traction.evaluate(pool, liq_0=450000.0, price_0=1.0)
+        self.assertFalse(result.passed)
+        self.assertFalse(result.fatal)  # объём мог ещё появиться - даём время
+
+    def test_pulled_liquidity_is_fatal(self):
+        """openhuman: $63 829 ликвидности превратились в $4 за сутки."""
+        result = traction.evaluate(_pool(liquidity_usd=4.0), liq_0=63829.0, price_0=1.0)
+        self.assertFalse(result.passed)
+        self.assertTrue(result.fatal)
+
+    def test_wash_trading_is_fatal(self):
+        pool = _pool(liquidity_usd=60000.0, volume_h1=60000.0 * 50)
+        result = traction.evaluate(pool, liq_0=60000.0, price_0=1.0)
+        self.assertFalse(result.passed)
+        self.assertTrue(result.fatal)
+        self.assertIn("накрутку", result.fail_reason)
+
+    def test_volume_without_distinct_buyers_is_rejected(self):
+        """Объём накрутить легко, сотню разных кошельков - нет."""
+        pool = _pool(buyers_h1=3, sellers_h1=2, buys_h1=200, sells_h1=150)
+        result = traction.evaluate(pool, liq_0=70000.0, price_0=1.0)
+        self.assertFalse(result.passed)
+        self.assertIn("покупателей", result.fail_reason)
+
+    def test_crowd_exiting_is_rejected(self):
+        pool = _pool(buyers_h1=30, sellers_h1=120)
+        result = traction.evaluate(pool, liq_0=70000.0, price_0=1.0)
+        self.assertFalse(result.passed)
+
+    def test_price_collapse_is_fatal(self):
+        result = traction.evaluate(_pool(price_usd=0.2), liq_0=70000.0, price_0=1.0)
+        self.assertFalse(result.passed)
+        self.assertTrue(result.fatal)
+
+    def test_more_buyers_scores_higher(self):
+        weak = traction.evaluate(_pool(buyers_h1=30), liq_0=70000.0, price_0=1.0)
+        strong = traction.evaluate(_pool(buyers_h1=150), liq_0=70000.0, price_0=1.0)
+        self.assertTrue(weak.passed and strong.passed)
+        self.assertGreater(strong.score, weak.score)
+
+
+class SpamFilterTests(unittest.TestCase):
+    """Фабрики клонов и перезапуски одного мема - основной шум в выдаче."""
+
+    def setUp(self):
+        with db._conn() as conn:
+            conn.execute("DELETE FROM tokens WHERE chain='spamtest'")
+
+    def _seen(self, symbol, liq):
+        db.mark_token_seen("spamtest", "0x" + symbol.lower().ljust(8, "0"), symbol,
+                           symbol, 80, "green", liq, None)
+
+    def test_clone_batch_is_detected(self):
+        """DERP/CLOWN/SGOOSE: пять пулов с LP $447k за 14 секунд."""
+        for sym in ("derp", "clown", "sgoose"):
+            self._seen(sym, 447627.0)
+        reason = discovery._spam_reason("spamtest", "bfrg", "Bonk Frog", 447559.0)
+        self.assertIsNotNone(reason)
+        self.assertIn("клонов", reason)
+
+    def test_distinct_liquidity_is_not_a_clone(self):
+        self._seen("alpha", 61000.0)
+        self._seen("beta", 88000.0)
+        self.assertIsNone(discovery._spam_reason("spamtest", "gamma", "Gamma", 132000.0))
+
+    def test_dust_pools_do_not_trigger_relaunch_filter(self):
+        """Ложное срабатывание, поймано на живом боте 2026-08-20.
+
+        У ходового тикера набираются десятки мусорных пулов на пару тысяч
+        долларов. Если считать их, живой токен с популярным именем глушится,
+        не начав торговаться - именно так был отсеян AGENT со 132 покупателями.
+        """
+        for i in range(30):
+            db.mark_token_seen("spamtest", os.urandom(8).hex(), "AGENT",
+                               "Some Other Agent", None, "skipped_low_liquidity", 2500.0, None)
+        self.assertIsNone(discovery._spam_reason("spamtest", "AGENT", "Circle Agent", 70321.0))
+
+    def test_same_ticker_different_project_is_not_a_relaunch(self):
+        for name in ("1stAgentToken", "Meida Agent", "Agentic Trading Bot"):
+            db.mark_token_seen("spamtest", os.urandom(8).hex(), "AGENT", name,
+                               80, "green", 60000.0 + len(name) * 100, None)
+        self.assertIsNone(discovery._spam_reason("spamtest", "AGENT", "Circle Agent", 70321.0))
+
+    def test_repeated_relaunch_is_filtered(self):
+        """lilcobie перезапускали 4 раза за сутки."""
+        for i in range(config.RELAUNCH_MAX_COPIES):
+            # Ликвидность заведомо разная, чтобы сработало правило перезапуска,
+            # а не правило пачки клонов.
+            db.mark_token_seen("spamtest", os.urandom(8).hex(), "lilcobie",
+                               "lil cobie bot", 80, "green", 60000.0 + i * 9000, None)
+        reason = discovery._spam_reason("spamtest", "lilcobie", "lil cobie bot", 123456.0)
+        self.assertIsNotNone(reason)
+        self.assertIn("перезапуск", reason)
+
+
+class ProbationDbTests(unittest.TestCase):
+    def test_candidate_flows_from_pending_to_promoted(self):
+        db.add_to_probation("base", "0xprobation1", "0xpool1", "TEST", "Test",
+                            price_0=1.0, liq_0=70000.0, score=80, verdict="green",
+                            first_check_delay=-1)
+        due = [c for c in db.get_probation_due(50) if c["address"] == "0xprobation1"]
+        self.assertEqual(len(due), 1)
+
+        db.reschedule_probation("base", "0xprobation1", 3600, "объём мал", buyers=12, volume=900)
+        still_due = [c for c in db.get_probation_due(50) if c["address"] == "0xprobation1"]
+        self.assertEqual(still_due, [], "перенесённый кандидат не должен быть в очереди")
+
+        pending = [c for c in db.get_probation_pending(50) if c["address"] == "0xprobation1"]
+        self.assertEqual(pending[0]["best_buyers"], 12)
+
+        db.close_probation("base", "0xprobation1", "promoted", "спрос подтверждён")
+        self.assertEqual(db.get_probation_due(50), [])
+        self.assertTrue(db.is_in_probation("base", "0xprobation1"))
+
+
+class ConfirmedTokenTrackingTests(unittest.TestCase):
+    """Подтверждённый токен - самый ценный: памп по нему обязан пушиться."""
+
+    def test_confirmed_outcome_counts_as_tracked(self):
+        db.record_outcome_start("base", "0xconfirmed1", "OK", 71, "confirmed", 1.0, 70000.0)
+        self.assertTrue(db.is_tracked("base", "0xconfirmed1"))
+        self.assertEqual(pump_dump._priority(db.is_tracked("base", "0xconfirmed1")), "high")
+
+    def test_unknown_token_is_not_tracked(self):
+        self.assertFalse(db.is_tracked("base", "0xneverseen"))
+
+
+class LookalikeTests(unittest.TestCase):
+    """Одинаковые токены с разных адресов - то, что пользователь видел в чате."""
+
+    def setUp(self):
+        with db._conn() as conn:
+            conn.execute("DELETE FROM tokens WHERE chain='looktest'")
+
+    def _seen(self, symbol, name, verdict="green"):
+        db.mark_token_seen("looktest", os.urandom(8).hex(), symbol, name,
+                           80, verdict, 70000.0, None)
+
+    def test_exact_copies_are_counted(self):
+        for _ in range(3):
+            self._seen("openhuman", "openhuman")
+        lk = db.count_lookalikes("looktest", "0xnew", "openhuman", "openhuman", 7 * 86400)
+        self.assertEqual(lk["same_name"], 3)
+        self.assertEqual(lk["same_ticker"], 0)
+
+    def test_same_ticker_other_projects_are_counted_separately(self):
+        self._seen("XTS", "First Project")
+        self._seen("XTS", "Second Project")
+        lk = db.count_lookalikes("looktest", "0xnew", "XTS", "Third Project", 7 * 86400)
+        self.assertEqual(lk["same_name"], 0)
+        self.assertEqual(lk["same_ticker"], 2)
+
+    def test_dust_is_not_counted_as_a_lookalike(self):
+        for _ in range(20):
+            self._seen("DUST", "Dusty", verdict="skipped_low_liquidity")
+        lk = db.count_lookalikes("looktest", "0xnew", "DUST", "Dusty", 7 * 86400)
+        self.assertEqual(lk["same_name"], 0)
+
+    def test_second_copy_is_now_filtered(self):
+        """Порог снижен до 1: проходит только первая находка."""
+        self._seen("copycat", "Copy Cat")
+        reason = discovery._spam_reason("looktest", "copycat", "Copy Cat", 71000.0)
+        self.assertIsNotNone(reason)
+        self.assertIn("перезапуск", reason)
+
+    def test_first_launch_still_passes(self):
+        self.assertIsNone(discovery._spam_reason("looktest", "brandnew", "Brand New", 71000.0))
+
+    def test_warning_is_empty_without_lookalikes(self):
+        self.assertEqual(bot.format_lookalike_warning("X", {"same_name": 0, "same_ticker": 0}, 7), "")
+
+    def test_russian_plurals(self):
+        self.assertIn("1 другой проект", bot.format_lookalike_warning("X", {"same_ticker": 1}, 7))
+        self.assertIn("2 других проекта", bot.format_lookalike_warning("X", {"same_ticker": 2}, 7))
+        self.assertIn("5 других проектов", bot.format_lookalike_warning("X", {"same_ticker": 5}, 7))
+        self.assertIn("2 раза", bot.format_lookalike_warning("X", {"same_name": 2}, 7))
+        self.assertIn("18 раз", bot.format_lookalike_warning("X", {"same_name": 18}, 7))
+
+
+class DexScreenerButtonTests(unittest.TestCase):
+    """Кнопка на график: по Robinhood Chain бот раньше вёл только в обозреватель блоков."""
+
+    ADDR = "0x" + "ab" * 20
+
+    def test_both_chains_get_a_dexscreener_button(self):
+        for chain in ("base", "robinhood"):
+            keyboard = bot.build_alert_keyboard(chain, self.ADDR, "confirmed")
+            urls = [b.url for row in keyboard.inline_keyboard for b in row if b.url]
+            self.assertTrue(any("dexscreener.com" in u for u in urls),
+                            f"нет кнопки на DexScreener для сети {chain}")
+            self.assertTrue(any(f"/{chain}/" in u for u in urls),
+                            f"ссылка ведёт не в ту сеть для {chain}")
+
+    def test_chart_links_come_before_block_explorers(self):
+        """Пользователь открывает график, а не страницу адреса."""
+        for chain in ("base", "robinhood"):
+            names = list(bot.EXPLORER_LINKS[chain].keys())
+            self.assertEqual(names[0], "dexscreener",
+                             f"для {chain} первым должен идти dexscreener, а не {names[0]}")
