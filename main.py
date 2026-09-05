@@ -56,13 +56,21 @@ async def main():
 
     tasks = [
         asyncio.create_task(discovery.run_discovery_base(application)),
-        asyncio.create_task(discovery.run_discovery_robinhood(application)),
         asyncio.create_task(probation.run_probation_watcher(application)),
         asyncio.create_task(pump_dump.run_pump_dump_watcher(application)),
         asyncio.create_task(outcomes.run_outcome_watcher(application)),
         asyncio.create_task(digest.run_digest_watcher(application)),
         asyncio.create_task(publish.run_publisher(application)),
     ]
+
+    # Robinhood Chain is off by default since 05.09.2026, and the reason is a
+    # measurement, not a preference: over the previous 14 days it produced 60,736
+    # sightings, 99.6% of them below any liquidity worth looking at, five pushes
+    # of which three are already dead, and its best pick in seven weeks was x2.47
+    # while the median went nowhere at all. It also spends the GeckoTerminal rate
+    # limit that Base discovery needs. SCAN_ROBINHOOD=1 brings it back.
+    if config.SCAN_ROBINHOOD:
+        tasks.append(asyncio.create_task(discovery.run_discovery_robinhood(application)))
 
     try:
         await stop_event.wait()

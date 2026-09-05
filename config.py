@@ -37,6 +37,10 @@ ROBINHOOD_KNOWN_QUOTE_TOKENS = {
 BASE_CHAIN_ID = 8453
 ROBINHOOD_CHAIN_ID = 4663
 
+# Robinhood Chain scanning, off by default since 05.09.2026 -- see main.py for
+# the measurement behind it. Set SCAN_ROBINHOOD=1 to bring the chain back.
+SCAN_ROBINHOOD = _int("SCAN_ROBINHOOD", 0) == 1
+
 MIN_LIQUIDITY_USD = _float("MIN_LIQUIDITY_USD", 50000)
 DISCOVERY_POLL_SECONDS = _int("DISCOVERY_POLL_SECONDS", 45)
 WATCHLIST_POLL_SECONDS = _int("WATCHLIST_POLL_SECONDS", 120)
