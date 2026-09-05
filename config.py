@@ -41,7 +41,14 @@ ROBINHOOD_CHAIN_ID = 4663
 # the measurement behind it. Set SCAN_ROBINHOOD=1 to bring the chain back.
 SCAN_ROBINHOOD = _int("SCAN_ROBINHOOD", 0) == 1
 
-MIN_LIQUIDITY_USD = _float("MIN_LIQUIDITY_USD", 50000)
+# The floor for LOOKING at a coin, not for showing it. It used to be $50,000,
+# and that one number threw away most of what was worth finding: over the 14 days
+# to 05.09.2026, of the Base coins now alive above $1M, 43 of 52 had been marked
+# "skipped_low_liquidity" and never evaluated at all. Among them FOMO (pool of
+# $7.1K when seen, x43 since), O ($1.9K, x1122), CP, DEUS, MENTE, DGLD -- and
+# STONKEX, seen with $49,800 and dropped $200 short of the line. Below ~$1.5K the
+# pools are the spam floor: 282 a day of them, none of which ever went anywhere.
+MIN_LIQUIDITY_USD = _float("MIN_LIQUIDITY_USD", 1500)
 DISCOVERY_POLL_SECONDS = _int("DISCOVERY_POLL_SECONDS", 45)
 WATCHLIST_POLL_SECONDS = _int("WATCHLIST_POLL_SECONDS", 120)
 PUMP_THRESHOLD_PCT = _float("PUMP_THRESHOLD_PCT", 50)
@@ -52,9 +59,17 @@ ALERT_COOLDOWN_SECONDS = _int("ALERT_COOLDOWN_SECONDS", 3600)
 DB_PATH = str(BASE_DIR / os.environ.get("DB_PATH", "meme_scout.sqlite3"))
 
 # --- Тихий режим / приоритет алертов -------------------------------------
-# Новый токен пушится сразу, только если он не 🔴 и ликвидность не ниже этого
-# порога. Всё остальное копится в дайджест-очереди.
-PUSH_MIN_LIQUIDITY_USD = _float("PUSH_MIN_LIQUIDITY_USD", 100000)
+# Размер пула, при котором монету уже можно торговать, а значит и показывать.
+# Кандидат меньше этого проходит, только если пул за время наблюдения вырос
+# в PROBATION_PUSH_LIQ_GROWTH раз: рост с $3K до $12K -- это чьи-то настоящие
+# деньги, а $12K сами по себе -- ещё нет.
+PUSH_MIN_LIQUIDITY_USD = _float("PUSH_MIN_LIQUIDITY_USD", 25000)
+PROBATION_PUSH_LIQ_GROWTH = _float("PROBATION_PUSH_LIQ_GROWTH", 2.5)
+
+# Слив ликвидности отчисляет кандидата сразу -- но только если было чему
+# сливаться. У пула на $2K обычные качели дают -40% без всякого злого умысла,
+# и старое правило хоронило ровно тех новичков, ради которых порог и опущен.
+PROBATION_SLIDE_FLOOR_USD = _float("PROBATION_SLIDE_FLOOR_USD", 10000)
 
 # --- Дневной дайджест ----------------------------------------------------
 DIGEST_ENABLED = _int("DIGEST_ENABLED", 1) == 1
@@ -110,7 +125,9 @@ PROBATION_POLL_SECONDS = _int("PROBATION_POLL_SECONDS", 120)
 PROBATION_FIRST_CHECK_MINUTES = _float("PROBATION_FIRST_CHECK_MINUTES", 45)
 PROBATION_RECHECK_MINUTES = _float("PROBATION_RECHECK_MINUTES", 90)
 # Столько часов даётся на то, чтобы проявить себя, потом кандидат отчисляется.
-PROBATION_MAX_HOURS = _float("PROBATION_MAX_HOURS", 12)
+# A day, not half a day: the coins worth catching took hours to be noticed by
+# anyone, and 12 hours quietly expelled them before the market showed up.
+PROBATION_MAX_HOURS = _float("PROBATION_MAX_HOURS", 24)
 PROBATION_BATCH = _int("PROBATION_BATCH", 40)
 
 # Ворота спроса. Все должны быть пройдены одновременно.

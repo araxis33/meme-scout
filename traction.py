@@ -64,7 +64,11 @@ def evaluate(pool: dict, liq_0: float, price_0: float) -> TractionResult:
     # --- ворота, после которых ждать уже бессмысленно --------------------
     if liq < config.MIN_LIQUIDITY_USD:
         return fail(f"ликвидность упала до ${liq:,.0f}", fatal=True)
-    if liq_0 and liq_ratio < config.PROBATION_MIN_LIQ_RATIO:
+    # Слив меряем только там, где было чему сливаться: у пула на пару тысяч
+    # обычные качели дают -40% без всякого злого умысла, и это правило хоронило
+    # ровно тех новичков, ради которых порог находки и опущен.
+    if (liq_0 >= config.PROBATION_SLIDE_FLOOR_USD
+            and liq_ratio < config.PROBATION_MIN_LIQ_RATIO):
         return fail(f"ликвидность слита: {liq_ratio*100:.0f}% от начальной", fatal=True)
     price_drop = _pct(price, price_0)
     if price_drop is not None and price_drop < -config.PROBATION_MAX_PRICE_DROP_PCT:
@@ -81,6 +85,12 @@ def evaluate(pool: dict, liq_0: float, price_0: float) -> TractionResult:
         return fail(f"покупателей всего {buyers} - интереса нет")
     if sellers and (buyers / sellers) < config.PROBATION_MIN_BUY_SELL_RATIO:
         return fail(f"из токена выходят: {buyers} покупателей против {sellers} продавцов")
+    # Последние ворота, и они про деньги, а не про интерес. Показывать имеет
+    # смысл то, из чего можно выйти: либо пул уже торгуемого размера, либо он
+    # вырос в разы с момента находки - а это чужие деньги, зашедшие после нас.
+    # Без этого опущенный порог находки вывалил бы в чат весь мелкий шум.
+    if liq < config.PUSH_MIN_LIQUIDITY_USD and liq_ratio < config.PROBATION_PUSH_LIQ_GROWTH:
+        return fail(f"пул всего ${liq:,.0f} и вырос лишь в {liq_ratio:.1f}× - рано показывать")
 
     # --- прошёл: считаем силу сигнала ------------------------------------
     reasons = []
