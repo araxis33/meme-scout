@@ -467,7 +467,7 @@ async def collect(address: str) -> dict:
             for c in ("base", "robinhood"):
                 t = await bs(client, c, f"/api/v2/tokens/{address}")
                 if t and t.get("symbol"):
-                    return {"error": f"<b>🔴 РИСК 10/10 — монета мертва</b>\n{html.escape(str(t.get('symbol')))} "
+                    return {"error": f"<b>🔴 НАДЁЖНОСТЬ 1/10 — монета мертва</b>\n{html.escape(str(t.get('symbol')))} "
                                      f"({html.escape(str(t.get('name') or ''))}) существует в сети "
                                      f"{'Base' if c == 'base' else 'Robinhood Chain'}, но торговать ею негде: "
                                      f"ни одного живого пула. Ликвидность выведена — монета мертва."}
@@ -593,7 +593,10 @@ def lp_status(d):
     return out
 
 
-RISK_LABELS = ((2, "очень низкий", "🟢"), (4, "низкий", "🟢"), (6, "средний", "🟡"), (8, "высокий", "🟠"), (10, "очень высокий", "🔴"))
+# Shown as TRUST, 10 = most trustworthy (he read "risk 10" backwards, 23.09.2026):
+# trust = 11 - risk. The risk number stays inside for scoring and calibration.
+TRUST_LABELS = ((2, "очень низкая — почти наверняка ловушка", "🔴"), (4, "низкая", "🟠"), (6, "средняя", "🟡"),
+                (8, "высокая", "🟢"), (10, "очень высокая", "🟢"))
 # Where the score starts and how low it can go, by how established the coin is.
 # Calibrated 23.09.2026 on coins whose truth is known (validation/risk_calibration.py):
 # with one base for all, a 16-day meme came out 1/10 because "sells without
@@ -799,12 +802,14 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
     score = max(floor, min(10, round(raw)))
     if hard:
         score = max(score, max(m for _, m in hard))
-    label, emoji = next((lab, em) for top, lab, em in RISK_LABELS if score <= top)
+    trust = 11 - score
+    label, emoji = next((lab, em) for top, lab, em in TRUST_LABELS if trust <= top)
     # Every factor with its points is kept so the weights can be refitted on
     # real outcomes (validation/calibration_sample.py) instead of set by hand.
     d["risk"] = {"score": score, "label": label, "raw": raw, "tier": tier["level"],
                  "hard": hard, "up": up, "down": down}
-    headline = f"{emoji} РИСК {score}/10 — {label}"
+    d["risk"]["trust"] = trust
+    headline = f"{emoji} НАДЁЖНОСТЬ {trust}/10 — {label}"
     raising = [t for t, _ in sorted(up, key=lambda x: -x[1])] if tier["level"] != "mature" else []
     return headline, [t for t, _ in hard], raising, [t for t, _ in down]
 
@@ -949,11 +954,11 @@ def render(d: dict, project: str | None = None) -> str:
     verdict, stop, warn, good = assess(d)
     L = [f"<b>{e(d['symbol'])}</b> · {e(d['name'])} · {'Base' if d['chain'] == 'base' else 'Robinhood Chain'}",
          f"<code>{d['address']}</code>", "", f"<b>{verdict}</b>",
-         "<i>1 — риск минимальный, 10 — почти наверняка ловушка. Решение за тобой.</i>"]
+         "<i>10 — максимальное доверие, 1 — почти наверняка ловушка. Решение за тобой.</i>"]
     if stop or warn:
-        L += ["", "<b>Повышают риск:</b>"] + [f"⛔ {e(s)}" for s in stop] + [f"⚠️ {e(s)}" for s in warn]
+        L += ["", "<b>Снижают надёжность:</b>"] + [f"⛔ {e(s)}" for s in stop] + [f"⚠️ {e(s)}" for s in warn]
     if good:
-        L += ["", "<b>Снижают риск:</b>"] + [f"✅ {e(s)}" for s in good]
+        L += ["", "<b>Повышают надёжность:</b>"] + [f"✅ {e(s)}" for s in good]
     if d.get("team_rights"):
         L += ["", "<b>Права команды — справка, не тревога</b>",
               "<i>У крупных проектов команда обычно оставляет себе управление, а среди крупнейших держателей — "
