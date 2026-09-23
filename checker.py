@@ -423,7 +423,18 @@ async def collect(address: str) -> dict:
     async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
         chain, pairs = await detect_chain(client, address)
         if not chain:
-            return {"error": "Монета не найдена ни на одной бирже DexScreener. Проверь адрес."}
+            # A rugged coin has no pools left, and "not found, check the address"
+            # sent people hunting for a typo (seen on 4 dead coins, 23.09.2026).
+            # If the token contract exists, say what it means.
+            for c in ("base", "robinhood"):
+                t = await bs(client, c, f"/api/v2/tokens/{address}")
+                if t and t.get("symbol"):
+                    return {"error": f"<b>⛔ НЕ БРАТЬ</b>\n{html.escape(str(t.get('symbol')))} "
+                                     f"({html.escape(str(t.get('name') or ''))}) существует в сети "
+                                     f"{'Base' if c == 'base' else 'Robinhood Chain'}, но торговать ею негде: "
+                                     f"ни одного живого пула. Ликвидность выведена — монета мертва."}
+            return {"error": "Такой монеты нет ни на биржах, ни в обозревателе блоков Base и Robinhood Chain. "
+                             "Проверь адрес."}
         if chain not in BLOCKSCOUT:
             return {"error": f"Монета торгуется в сети «{chain}». Пока проверяю только Base и Robinhood Chain."}
 
