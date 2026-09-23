@@ -64,7 +64,9 @@ PROMPT = """Ты независимый аналитик криптопроек�
    Никаких советов, сколько вкладывать, «небольшими суммами», «как ставку» — это не твоё дело.
 
 Жёсткие правила:
-- Каждое утверждение — с номером источника в скобках. Нет в материалах — пиши «не найдено».
+- Каждое утверждение — с номером источника в скобках. Нет в материалах — пиши ровно «в собранных материалах
+  не найдено». НИКОГДА не превращай «не нашёл» в «нет»: не пиши «команда не раскрыта», «инвесторов нет»,
+  «аудита нет», если материал прямо этого не говорит. Отсутствие сведений не минус проекту и не довод в выводе.
 - Даты: если у сведения нет даты — допиши «(дата неизвестна)»; если оно старше трёх месяцев от сегодня — «(устарело, <месяц год>)».
   Раунд инвестиций двухлетней давности — это история, а не свежая новость.
 - Материал может быть про другой проект с таким же тикером. Если он не совпадает по сайту, адресу или описанию — не используй.
@@ -97,9 +99,34 @@ async def _get(client, url, **kw):
         return None
 
 
+SEARCH_STATE = {"blocked": False}
+
+
+def _tavily_key():
+    return os.getenv("TAVILY_API_KEY", "").strip()
+
+
 async def web_search(client, query, n=6):
+    """Tavily when a key is set (built for this, 1,000 free searches a month);
+    otherwise DuckDuckGo's HTML page, which starts serving a captcha after a few
+    dozen queries from one address (seen 23.09.2026) - then we say so."""
+    key = _tavily_key()
+    if key:
+        try:
+            r = await client.post("https://api.tavily.com/search", headers={"Authorization": f"Bearer {key}"},
+                                  json={"query": query, "max_results": n, "search_depth": "basic"})
+            if r.status_code == 200:
+                return [{"title": _clean(x.get("title") or "", 100), "url": x.get("url") or "",
+                         "text": _clean(((x.get("published_date") or "")[:10] + " " + (x.get("content") or "")).strip(),
+                                        400)}
+                        for x in r.json().get("results") or [] if x.get("url")]
+        except (httpx.HTTPError, ValueError):
+            pass
     r = await _get(client, "https://html.duckduckgo.com/html/", params={"q": query})
     if not r:
+        return []
+    if "anomaly" in r.text[:20000].lower() and "result__a" not in r.text:
+        SEARCH_STATE["blocked"] = True
         return []
     out = []
     for href, title, snip in re.findall(
@@ -131,6 +158,36 @@ async def coingecko(client, chain, address):
         "repos": [u for u in (links.get("repos_url") or {}).get("github", []) if u],
         "homepage": [u for u in links.get("homepage") or [] if u],
     }
+
+
+_LLAMA = {"at": 0, "protocols": []}
+
+
+async def defillama(client, d, cg_name):
+    """DefiLlama's protocol card: category, audits, description, TVL. Free and
+    keyless (its funding-rounds list went paid in 2026, so investors aren't here).
+    Matched by the project's X handle or site, never by ticker alone."""
+    if time.time() - _LLAMA["at"] > 12 * 3600:
+        r = await _get(client, "https://api.llama.fi/protocols")
+        if r:
+            _LLAMA.update(at=time.time(), protocols=r.json())
+    handles = {u.rstrip("/").rsplit("/", 1)[-1].lower() for t, u in d["socials"] if t in ("twitter", "x") and u}
+    hosts = {urlparse(u).netloc.lower().removeprefix("www.") for u in d["websites"] if u}
+    names = {n.lower() for n in (d["name"], cg_name) if n}
+    for p in _LLAMA["protocols"]:
+        host = urlparse(p.get("url") or "").netloc.lower().removeprefix("www.").removeprefix("app.")
+        if ((p.get("twitter") or "").lower() in handles or (host and any(host in h or h in host for h in hosts))
+                or (p.get("name") or "").lower() in names):
+            # Zero TVL and "0 audits" mean "not tracked" far more often than "none":
+            # Virtuals is not a DeFi pool and the model read TVL $0 as a weakness.
+            tvl = p.get("tvl") or 0
+            audits = int(p.get("audits") or 0)
+            extra = (f"TVL ${tvl:,.0f}. " if tvl > 0 else "") + (f"Аудитов по DefiLlama: {audits}. " if audits else "")
+            return {"title": f"DefiLlama: {p.get('name')} (данные на сегодня)",
+                    "url": f"https://defillama.com/protocol/{p.get('slug')}",
+                    "text": f"Категория: {p.get('category')}. {extra}Сети: {', '.join((p.get('chains') or [])[:6])}. "
+                            f"{p.get('description') or ''}"[:600]}
+    return None
 
 
 async def website(client, url):
@@ -181,9 +238,11 @@ def _about_this_project(m, d, site_host):
     blob = f"{m['title']} {m['url']} {m['text']}".lower()
     if d["address"].lower() in blob or (site_host and site_host in blob):
         return True
-    name = d["name"].lower().strip()
     # A bare ticker matches half the internet; the project name must appear.
-    return len(name) >= 4 and name not in (d["symbol"].lower(),) and name in blob
+    for name in {d["name"].lower().strip(), (d.get("alt_name") or "").lower().strip()}:
+        if len(name) >= 4 and name != d["symbol"].lower() and name in blob:
+            return True
+    return False
 
 
 async def gather(d):
@@ -194,7 +253,13 @@ async def gather(d):
     async with httpx.AsyncClient(timeout=15) as client:
         async def no_site():
             return None, []
-        searches = [f'"{name}" {sym} crypto', f'"{name}" investors backed partnership', f'{d["address"]}']
+        # Founders and backers were "not found" even for VIRTUAL (23.09.2026): the
+        # general queries return exchanges and price pages. Ask for them directly,
+        # and on the sites that track funding rounds.
+        searches = [f'"{name}" {sym} crypto', f'"{name}" founders team co-founder',
+                    f'"{name}" raised funding round investors',
+                    f'{name} {sym} site:cryptorank.io OR site:rootdata.com OR site:messari.io',
+                    f'"{name}" partnership integration', f'{d["address"]}']
         cg, (site, site_repos), *found = await asyncio.gather(
             coingecko(client, d["chain"], d["address"]),
             website(client, site_url) if site_url else no_site(),
@@ -203,9 +268,18 @@ async def gather(d):
             site, site_repos = await website(client, cg["homepage"][0])
             site_host = site_host or urlparse(cg["homepage"][0]).netloc.lower().removeprefix("www.")
         repos = (cg or {}).get("repos", []) + site_repos + [u for t, u in d["socials"] if "github" in (t or "")]
-        gh = await github_activity(client, repos[0]) if repos else None
+        cg_name = ((cg or {}).get("title") or "").removeprefix("CoinGecko: ").split(" (")[0]
+        gh, llama = await asyncio.gather(
+            github_activity(client, repos[0]) if repos else asyncio.sleep(0),
+            defillama(client, d, cg_name))
 
-    materials = [m for m in (site, cg, gh) if m]
+    # Every query empty means the search itself is down (captcha), not that
+    # the web knows nothing: the report has to say which.
+    SEARCH_STATE["blocked"] = not any(found)
+    # The coin's name differs between sources ("Virtual Protocol" on DexScreener,
+    # "Virtuals Protocol" everywhere else) - match either.
+    d = {**d, "alt_name": cg_name}
+    materials = [m for m in (site, cg, gh, llama) if m]
     seen = {m["url"] for m in materials}
     dropped = 0
     for group in found:
@@ -219,7 +293,7 @@ async def gather(d):
                 materials.append(m)
             else:
                 dropped += 1
-    return materials[:14], dropped
+    return materials[:18], dropped
 
 
 async def _models(client, key):
@@ -336,6 +410,8 @@ async def project_read(d: dict, assessment) -> str | None:
         out += "\nИсточники: " + " · ".join(
             f'<a href="{html.escape(materials[i - 1]["url"])}">[{i}]</a>' for i in cited)
     note = f"ИИ: {model}, материалов {len(materials)}"
+    if SEARCH_STATE["blocked"]:
+        note += "; поиск в интернете временно недоступен — разбор только по сайту, CoinGecko, DefiLlama и GitHub"
     if dropped:
         note += f", отброшено про другие проекты: {dropped}"
     return out + f"\n<i>{html.escape(note)}</i>"
