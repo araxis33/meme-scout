@@ -305,6 +305,10 @@ async def holder_map(client, chain, token, total_supply, dev, lp_addrs):
     for t in pending:
         t.cancel()
     unchecked = sum(1 for r in wallets if not r.get("checked"))
+    # Which big wallets are exchanges: they hold customers' coins, not a whale's.
+    big = [r for r in rows if r["kind"] == "wallet" and r["pct"] >= 1][:6]
+    for r, prof in zip(big, await asyncio.gather(*(wallet_profile(client, chain, r["address"]) for r in big))):
+        r["exchange"] = prof["exchange"]
     from_dev = [r for r in wallets if dev and r.get("got_from") == dev]
     for r in from_dev:
         r["exchange"] = (await wallet_profile(client, chain, r["address"]))["exchange"]
@@ -463,7 +467,7 @@ async def collect(address: str) -> dict:
             for c in ("base", "robinhood"):
                 t = await bs(client, c, f"/api/v2/tokens/{address}")
                 if t and t.get("symbol"):
-                    return {"error": f"<b>⛔ НЕ БРАТЬ</b>\n{html.escape(str(t.get('symbol')))} "
+                    return {"error": f"<b>🔴 РИСК 10/10 — монета мертва</b>\n{html.escape(str(t.get('symbol')))} "
                                      f"({html.escape(str(t.get('name') or ''))}) существует в сети "
                                      f"{'Base' if c == 'base' else 'Robinhood Chain'}, но торговать ею негде: "
                                      f"ни одного живого пула. Ликвидность выведена — монета мертва."}
@@ -589,198 +593,220 @@ def lp_status(d):
     return out
 
 
+RISK_LABELS = ((2, "очень низкий", "🟢"), (4, "низкий", "🟢"), (6, "средний", "🟡"), (8, "высокий", "🟠"), (10, "очень высокий", "🔴"))
+# Where the score starts and how low it can go, by how established the coin is.
+# Calibrated 23.09.2026 on coins whose truth is known (validation/risk_calibration.py):
+# with one base for all, a 16-day meme came out 1/10 because "sells without
+# loss" and "many buyers" kept subtracting. About 1 in 50 new Base coins lives
+# two weeks - a new coin cannot be low risk however clean it looks.
+RISK_START = {"mature": (1.5, 1), "grown": (3.0, 3), "new": (4.5, 4)}
+
+
 def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
-    """(verdict, stop reasons, warnings, good signs). Rules, not a model."""
-    stop, warn, good = [], [], []
+    """Risk 1-10 from weighted findings. Returns (headline, hard, raising, lowering).
+
+    He asked (23.09.2026) for a graded risk instead of "don't buy / worth a look":
+    FLOCK - 631 days, on Coinbase and Kraken, VC-backed - got "don't buy" for one
+    finding (top-10 wallets hold 57%, two of them exchange hot wallets). Every
+    finding now carries points; a real trap still pins the score to 9-10, and the
+    reader sees what raised the number and what lowered it.
+    """
+    hard, up, down = [], [], []   # hard: (text, minimum score); up/down: (text, points)
     gp, hp = d["gp"], d["hp"]
     flag = lambda k: str(gp.get(k)) == "1"
+    add = lambda text, pts: up.append((text, pts))
+    minus = lambda text, pts: down.append((text, pts))
 
     hp_res = hp.get("honeypotResult") or {}
     sim = hp.get("simulationResult") or {}
     if hp_res.get("isHoneypot") or flag("is_honeypot"):
-        stop.append("продать нельзя: это ловушка (honeypot)")
+        hard.append(("продать нельзя: это ловушка (honeypot)", 10))
     sell_tax = _num(sim.get("sellTax"))
     if sell_tax is None and gp.get("sell_tax") not in (None, ""):
         sell_tax = (_num(gp.get("sell_tax")) or 0) * 100
-    if sell_tax is not None and sell_tax > 10:
-        stop.append(f"налог на продажу {sell_tax:.0f}%")
+    if sell_tax is not None and sell_tax > 30:
+        hard.append((f"налог на продажу {sell_tax:.0f}%", 10))
+    elif sell_tax is not None and sell_tax > 10:
+        hard.append((f"налог на продажу {sell_tax:.0f}%", 8))
     elif sell_tax is not None and sell_tax > 3:
-        warn.append(f"налог на продажу {sell_tax:.0f}%")
+        add(f"налог на продажу {sell_tax:.0f}%", 1.5)
     owner = (gp.get("owner_address") or "").lower()
     owner_live = owner and owner not in BURN
     if flag("is_mintable") and owner_live:
-        stop.append("владелец может допечатать монеты")
+        add("владелец может допечатать монеты", 2.5)
     if flag("can_take_back_ownership"):
-        stop.append("владелец может вернуть себе контроль")
+        add("владелец может вернуть себе контроль", 3)
     if flag("hidden_owner"):
-        warn.append("у контракта есть скрытые права управления (роли вне владельца)")
+        add("у контракта есть скрытые права управления (роли вне владельца)", 1)
         if flag("owner_change_balance"):
-            warn.append("кто-то с правами может менять балансы")
+            add("кто-то с правами может менять балансы", 1)
         if flag("is_mintable"):
-            warn.append("кто-то с правами может допечатать монеты")
+            add("кто-то с правами может допечатать монеты", 1)
     if flag("is_blacklisted") and owner_live:
-        warn.append("владелец может заблокировать кошелёк")
+        add("владелец может заблокировать кошелёк", 1)
     if flag("slippage_modifiable") and owner_live:
-        stop.append("владелец может поменять налог")
+        add("владелец может поменять налог", 2.5)
     if flag("cannot_sell_all"):
-        stop.append("нельзя продать всё сразу")
+        hard.append(("нельзя продать всё сразу", 9))
     if flag("is_proxy"):
-        warn.append("контракт можно подменить (прокси)")
+        add("контракт можно подменить (прокси)", 0.5)
     if d.get("verified") is False:
-        warn.append("код контракта не опубликован")
+        add("код контракта не опубликован", 1)
     if flag("transfer_pausable") and owner_live:
-        stop.append("владелец может остановить торговлю")
+        add("владелец может остановить торговлю", 2.5)
     if flag("personal_slippage_modifiable"):
-        stop.append("налог можно задать отдельному кошельку — так запирают продавцов")
+        hard.append(("налог можно задать отдельному кошельку — так запирают продавцов", 9))
     if flag("trading_cooldown"):
-        warn.append("есть пауза между сделками")
+        add("есть пауза между сделками", 0.5)
     if flag("anti_whale_modifiable") and owner_live:
-        warn.append("владелец может менять лимит на размер сделки")
+        add("владелец может менять лимит на размер сделки", 0.5)
     if flag("external_call"):
-        warn.append("контракт обращается к чужому контракту — его поведение может поменяться")
+        add("контракт обращается к чужому контракту — его поведение может поменяться", 0.5)
     if flag("honeypot_with_same_creator"):
-        stop.append("этот же автор уже выпускал монеты-ловушки")
+        add("этот же автор уже выпускал монеты-ловушки", 4)
 
     lp = lp_status(d)
     dev_addr = (d["dev"].get("dev") or "").lower()
     if lp["v2"] and lp["locked_pct"] is not None and 10 <= lp["share"] < 50:
         if lp["locked_pct"] < 50 and (lp["top_pct"] or 0) > 50:
-            warn.append(f"доли пула v2 не заблокированы — это {lp['share']:.0f}% всей ликвидности")
+            add(f"доли пула v2 не заблокированы — это {lp['share']:.0f}% всей ликвидности", 1)
     elif lp["v2"] and lp["locked_pct"] is not None and lp["share"] >= 50:
         if lp["top_holder"] and lp["top_holder"] == dev_addr and lp["top_pct"] > 50:
-            stop.append(f"ликвидность у автора ({lp['top_pct']:.0f}%) — может забрать в любой момент")
+            add(f"ликвидность у автора ({lp['top_pct']:.0f}%) — может забрать в любой момент", 4)
         elif lp["locked_pct"] < 50 and lp["top_pct"] and lp["top_pct"] > 50 and d["liq"] >= 5000:
             if lp.get("top_is_contract"):
-                warn.append(f"ликвидность ({lp['top_pct']:.0f}%) лежит в контракте — заблокирована ли, не видно")
+                add(f"ликвидность ({lp['top_pct']:.0f}%) лежит в контракте — заблокирована ли, не видно", 1)
             else:
-                stop.append(f"ликвидность не заблокирована: {lp['top_pct']:.0f}% у обычного кошелька — может вывести")
+                add(f"ликвидность не заблокирована: {lp['top_pct']:.0f}% у обычного кошелька — может вывести", 3)
         elif lp["locked_pct"] >= 90:
-            good.append(f"ликвидность заблокирована или сожжена ({lp['locked_pct']:.0f}%)")
+            minus(f"ликвидность заблокирована или сожжена ({lp['locked_pct']:.0f}%)", 1)
 
     sn = d.get("snipe") or {}
     if sn.get("found") and sn.get("still_pct", 0) > 15:
-        (stop if sn["still_pct"] > 30 else warn).append(
-            f"кошельки, купившие в первые секунды, до сих пор держат {sn['still_pct']:.0f}%")
+        add(f"кошельки, купившие в первые секунды, до сих пор держат {sn['still_pct']:.0f}%",
+            2.5 if sn["still_pct"] > 30 else 1.5)
     creator_pct = (_num(gp.get("creator_percent")) or 0) * 100
-    if creator_pct > 5 and not any("у автора" in s for s in stop + warn):
-        (stop if creator_pct > 15 else warn).append(f"у автора {creator_pct:.0f}% монет")
+    h = d["holders"]
+    dev_row = next((r for r in h["rows"] if r["is_dev"]), None)
+    creator_pct = max(creator_pct, dev_row["pct"] if dev_row else 0)
+    if creator_pct > 5:
+        add(f"у автора {creator_pct:.0f}% монет", 2.5 if creator_pct > 15 else 1.2)
 
     if d["liq"] < 5000:
-        stop.append(f"ликвидность всего ${d['liq']:,.0f}")
-    honeypot = any(s.startswith("продать нельзя") for s in stop)
-    loss500 = None
-    if 500 in d["exits"] and not honeypot:
+        hard.append((f"ликвидность всего ${d['liq']:,.0f}", 8))
+    elif d["liq"] < 25000:
+        add(f"ликвидность всего ${d['liq']:,.0f}", 1.5)
+    trap = any(t.startswith("продать нельзя") for t, _ in hard)
+    if 500 in d["exits"] and not trap:
         i, o = d["exits"][500]
-        loss500 = (1 - o / i) * 100
-        if loss500 > 15:
-            stop.append(f"при продаже на $500 теряешь {loss500:.0f}%")
-        elif loss500 > 5:
-            warn.append(f"при продаже на $500 теряешь {loss500:.0f}%")
+        loss = (1 - o / i) * 100
+        if loss > 15:
+            add(f"при продаже на $500 теряешь {loss:.0f}%", 3)
+        elif loss > 5:
+            add(f"при продаже на $500 теряешь {loss:.0f}%", 1.5)
         else:
-            good.append(f"$500 продаются почти без потерь ({loss500:.1f}%)")
+            minus(f"$500 продаются почти без потерь ({loss:.1f}%)", 0.5)
 
-    h = d["holders"]
-    wallets = [r for r in h["rows"] if r["kind"] == "wallet"]
+    # Exchange hot wallets hold customers' coins; they are not concentration
+    # (two of FLOCK's "top-10 wallets" were exchanges with 12,000+ ETH).
+    wallets = [r for r in h["rows"] if r["kind"] == "wallet" and not r.get("exchange")]
     top10 = sum(r["pct"] for r in wallets[:10])
     if top10 > 50:
-        stop.append(f"10 крупнейших кошельков держат {top10:.0f}% монет")
+        add(f"10 крупнейших кошельков (без бирж и контрактов) держат {top10:.0f}% монет", 2.5)
     elif top10 > 30:
-        warn.append(f"10 крупнейших кошельков держат {top10:.0f}%")
-    dev_row = next((r for r in h["rows"] if r["is_dev"]), None)
-    if dev_row and dev_row["pct"] > 5:
-        (stop if dev_row["pct"] > 15 else warn).append(f"у автора {dev_row['pct']:.0f}% монет")
+        add(f"10 крупнейших кошельков (без бирж и контрактов) держат {top10:.0f}%", 1.2)
     if h["clusters"]:
         f, g = h["clusters"][0]
         share = sum(r["pct"] for r in g)
-        text = f"кошельков, получивших деньги с одного адреса: {len(g)}, вместе {share:.0f}% монет"
-        (stop if share > 20 else warn).append(text)
+        add(f"кошельков, получивших деньги с одного адреса: {len(g)}, вместе {share:.0f}% монет",
+            2.5 if share > 20 else 1 if share > 5 else 0.3)
     to_exchange = [r for r in h["from_dev"] if r.get("exchange")]
     if to_exchange:
-        warn.append(f"автор сам отправил {sum(r['pct'] for r in to_exchange):.0f}% монет на кошельки бирж — "
-                    "так делают, чтобы держатели выглядели солиднее")
+        add(f"автор сам отправил {sum(r['pct'] for r in to_exchange):.0f}% монет на кошельки бирж — "
+            "так делают, чтобы держатели выглядели солиднее", 2)
     if h["from_dev"]:
         share = sum(r["pct"] for r in h["from_dev"])
-        text = f"кошельков, получивших монеты прямо от автора: {len(h['from_dev'])}, вместе {share:.0f}% монет"
-        (stop if share > 15 else warn).append(text)
+        add(f"кошельков, получивших монеты прямо от автора: {len(h['from_dev'])}, вместе {share:.0f}% монет",
+            3 if share > 15 else 1.5 if share > 5 else 0.5)
     for f, g in h["handed"][:1]:
-        warn.append(f"кошельков, получивших монеты с одного адреса: {len(g)}, вместе {sum(r['pct'] for r in g):.0f}%")
-    if h.get("unchecked", 0) >= 3:
-        warn.append(f"не удалось проверить связи {h['unchecked']} крупных кошельков — вывод неполный")
+        share = sum(r["pct"] for r in g)
+        add(f"кошельков, получивших монеты с одного адреса: {len(g)}, вместе {share:.0f}%",
+            1 if share > 10 else 0.3)
     if h["dev_funded"]:
-        warn.append(f"автор сам профинансировал {len(h['dev_funded'])} из крупных держателей")
+        add(f"автор сам профинансировал {len(h['dev_funded'])} из крупных держателей", 1.5)
 
     dv = d["dev"]
     launches = dv.get("launches") or []
     if launches:
         dead = sum(1 for l in launches if l["liq"] < 1000)
         if len(launches) >= 3 and dead / len(launches) >= 0.8:
-            stop.append(f"автор запускал {len(launches)} монет, мертвы {dead}")
+            add(f"автор запускал {len(launches)} монет, мертвы {dead}", 3)
         elif dead:
-            warn.append(f"автор запускал {len(launches)} монет, мертвы {dead}")
+            add(f"автор запускал {len(launches)} монет, мертвы {dead}", 1)
     if dv.get("funded_before_deploy_min") is not None and dv["funded_before_deploy_min"] < 60 \
             and not dv.get("funder_label") and (dv.get("funder_amount") or 0) < 0.05:
-        warn.append(f"кошелёк автора получил деньги за {dv['funded_before_deploy_min']:.0f} мин до запуска — одноразовый")
+        add(f"кошелёк автора получил деньги за {dv['funded_before_deploy_min']:.0f} мин до запуска — одноразовый", 1.5)
 
     if d["buyers"] is None:
         n = d.get("ds_buys", 0)
         if n >= 300:
-            good.append(f"{n} покупок за сутки")
+            minus(f"{n} покупок за сутки", 0.5)
         elif n < 20:
-            warn.append(f"всего {n} покупок за сутки")
+            add(f"всего {n} покупок за сутки", 1.5)
     elif d["buyers"] >= 300:
-        good.append(f"{d['buyers']} разных покупателей за сутки")
+        minus(f"{d['buyers']} разных покупателей за сутки", 0.5)
     elif d["buyers"] < 50:
-        warn.append(f"всего {d['buyers']} разных покупателей за сутки")
+        add(f"всего {d['buyers']} разных покупателей за сутки", 1.5)
     if d["liq"] and d["vol"] / d["liq"] > 20:
-        warn.append("объём в 20+ раз больше ликвидности — похоже на накрутку")
+        add("объём в 20+ раз больше ликвидности — похоже на накрутку", 1.5)
     if d["buyers"] and d["buys"] and d["buys"] / d["buyers"] > 8:
-        warn.append(f"в среднем {d['buys'] / d['buyers']:.0f} покупок на кошелёк — похоже на ботов")
+        add(f"в среднем {d['buys'] / d['buyers']:.0f} покупок на кошелёк — похоже на ботов", 1)
     if d["age_h"] is not None and d["age_h"] < 24:
-        warn.append(f"монете {d['age_h']:.0f} ч")
+        add(f"монете {d['age_h']:.0f} ч", 1.5)
+    elif d["age_h"] is not None and d["age_h"] < 24 * 7:
+        add(f"монете {d['age_h'] / 24:.0f} дн.", 0.5)
 
-    # Liquidity with no trading is set dressing: $250k pools with 0-1 buys and $0
-    # volume a day were "worth a look" in the 23.09 forward test.
+    # Liquidity with no trading is set dressing; a same-ticker token with 3x the
+    # liquidity means this is a copy (both missed in the 23.09 forward test).
     if d["liq"] >= 10000 and d.get("ds_buys", 0) < 5 and d["vol"] < 1000:
-        stop.append(f"торговли нет: за сутки {d.get('ds_buys', 0)} покупок и объём ${d['vol']:,.0f} "
-                    f"при ликвидности ${d['liq']:,.0f} — ликвидность для вида")
+        hard.append((f"торговли нет: за сутки {d.get('ds_buys', 0)} покупок и объём ${d['vol']:,.0f} "
+                     f"при ликвидности ${d['liq']:,.0f} — ликвидность для вида", 9))
     twins = d.get("twins") or []
     if twins and twins[0]["liq"] >= 100000:
         big = twins[0]
         if big["liq"] >= 3 * max(d["liq"], 1):
-            stop.append(f"похоже на копию: у настоящего {d['symbol']} другой адрес ({_short(big['address'])}, "
-                        f"ликвидность ${big['liq']:,.0f}) — сверь адрес")
+            hard.append((f"похоже на копию: у настоящего {d['symbol']} другой адрес ({_short(big['address'])}, "
+                         f"ликвидность ${big['liq']:,.0f}) — сверь адрес", 9))
         elif big["liq"] > d["liq"]:
-            warn.append(f"есть другая монета {d['symbol']} крупнее ({_short(big['address'])}) — сверь адрес")
+            add(f"есть другая монета {d['symbol']} крупнее ({_short(big['address'])}) — сверь адрес", 1)
 
-    # The rules above are "how to spot a trap in a fresh meme coin". Applied to a
-    # 2.5-year-old protocol on 56 exchanges they called VIRTUAL "careful" and the
-    # AI read it as "don't buy" (23.09.2026): team roles, treasury and staking
-    # contracts among the top holders, protocol-owned liquidity - normal there.
-    # For a mature project those become a note on trust in the team, not alarms.
+    # Team roles, treasury and staking among the top holders and protocol-owned
+    # liquidity are normal for a mature project (VIRTUAL, 23.09.2026): they stay
+    # in a "team rights" note at half weight instead of reading as alarms.
     tier = maturity(d)
     d["tier"] = tier
     if tier["level"] == "mature":
-        traps = ("продать нельзя", "налог на продажу", "нельзя продать", "налог можно задать",
-                 "автор уже выпускал", "ликвидность всего")
-        kept_stop = [s for s in stop if s.startswith(traps)]
-        rights = [s for s in stop + warn if s not in kept_stop]
-        d["team_rights"] = rights
-        stop, warn = kept_stop, []
-        good.insert(0, tier["summary"])
+        d["team_rights"] = [t for t, _ in up]
+        up = [(t, p / 2) for t, p in up]
+        minus(tier["summary"], 0)
     elif tier["level"] == "grown":
-        good.insert(0, tier["summary"])
+        minus(tier["summary"], 0)
     elif tier["majors"]:
-        good.append(f"торгуется на крупных биржах: {', '.join(tier['majors'][:4])}")
+        minus(f"торгуется на крупных биржах: {', '.join(tier['majors'][:4])}", 1)
 
-    if stop:
-        verdict = "⛔ НЕ БРАТЬ"
-    elif tier["level"] == "mature":
-        verdict = "🟢 КРУПНЫЙ ПРОЕКТ — признаков ловушки нет"
-    elif len(warn) >= 3:
-        verdict = "⚠️ ОСТОРОЖНО"
-    else:
-        verdict = "🟢 МОЖНО СМОТРЕТЬ"
-    return verdict, stop, warn, good
+    start, floor = RISK_START[tier["level"]]
+    raw = start + sum(p for _, p in up) - sum(p for _, p in down)
+    score = max(floor, min(10, round(raw)))
+    if hard:
+        score = max(score, max(m for _, m in hard))
+    label, emoji = next((lab, em) for top, lab, em in RISK_LABELS if score <= top)
+    # Every factor with its points is kept so the weights can be refitted on
+    # real outcomes (validation/calibration_sample.py) instead of set by hand.
+    d["risk"] = {"score": score, "label": label, "raw": raw, "tier": tier["level"],
+                 "hard": hard, "up": up, "down": down}
+    headline = f"{emoji} РИСК {score}/10 — {label}"
+    raising = [t for t, _ in sorted(up, key=lambda x: -x[1])] if tier["level"] != "mature" else []
+    return headline, [t for t, _ in hard], raising, [t for t, _ in down]
 
 
 MAJOR_CEX = ("Binance", "Coinbase Exchange", "Kraken", "OKX", "Bybit", "Upbit", "Bitget", "KuCoin", "Gate")
@@ -922,13 +948,12 @@ def render(d: dict, project: str | None = None) -> str:
     e = html.escape
     verdict, stop, warn, good = assess(d)
     L = [f"<b>{e(d['symbol'])}</b> · {e(d['name'])} · {'Base' if d['chain'] == 'base' else 'Robinhood Chain'}",
-         f"<code>{d['address']}</code>", "", f"<b>{verdict}</b>"]
-    for s in stop:
-        L.append(f"⛔ {e(s)}")
-    for s in warn:
-        L.append(f"⚠️ {e(s)}")
-    for s in good:
-        L.append(f"✅ {e(s)}")
+         f"<code>{d['address']}</code>", "", f"<b>{verdict}</b>",
+         "<i>1 — риск минимальный, 10 — почти наверняка ловушка. Решение за тобой.</i>"]
+    if stop or warn:
+        L += ["", "<b>Повышают риск:</b>"] + [f"⛔ {e(s)}" for s in stop] + [f"⚠️ {e(s)}" for s in warn]
+    if good:
+        L += ["", "<b>Снижают риск:</b>"] + [f"✅ {e(s)}" for s in good]
     if d.get("team_rights"):
         L += ["", "<b>Права команды — справка, не тревога</b>",
               "<i>У крупных проектов команда обычно оставляет себе управление, а среди крупнейших держателей — "
@@ -985,13 +1010,13 @@ def render(d: dict, project: str | None = None) -> str:
             tag = "автор"
         elif r.get("got_from") and r["got_from"] == d["dev"].get("dev"):
             tag = "биржа, получила от автора" if r.get("exchange") else "получил от автора"
+        elif r.get("exchange"):
+            tag = "биржа"
         elif r.get("got_from") == "pool":
             tag = "купил"
         if r["kind"] == "contract" and r.get("name"):
             tag = f"контракт {e(str(r['name'])[:30])}"
         L.append(f"{r['pct']:.1f}% <code>{_short(r['address'])}</code> {tag}")
-    if h.get("unchecked"):
-        L.append(f"<i>Не успел проверить связи кошельков: {h['unchecked']}</i>")
     for f, g in h["clusters"][:2]:
         L.append(f"🔗 кошельков с деньгами от <code>{_short(f)}</code>: {len(g)}, вместе {sum(r['pct'] for r in g):.0f}%")
 
