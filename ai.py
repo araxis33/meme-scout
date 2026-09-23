@@ -12,7 +12,11 @@ today's date and must mark anything undated or older than three months; web
 results that don't mention the project's name, site or contract are dropped
 before the model sees them (tickers are reused all the time).
 
-Without a key this returns None and /check still answers with the on-chain part.
+When every Gemini model is busy (the free tier answers 503 "high demand" for
+hours), the same prompt goes to Groq (GROQ_API_KEY, also free): gpt-oss-120b
+translated most accurately of the models on that key in a 23.09.2026 test.
+
+Without any key this returns None and /check still answers with the on-chain part.
 """
 import asyncio
 import html
@@ -28,6 +32,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 API = "https://generativelanguage.googleapis.com/v1beta"
+GROQ = "https://api.groq.com/openai/v1"
+GROQ_MODELS = ("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b")
 BROWSER = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                          "(KHTML, like Gecko) Chrome/130 Safari/537.36"}
 _model_cache: list[str] = []
@@ -49,19 +55,28 @@ PROMPT = """Ты независимый аналитик криптопроек�
 2. Развитие — обновления, код, активность за последний месяц.
 3. Кто стоит — команда (публичная или анонимная), инвесторы, спонсоры, фонды.
 4. Партнёрства — коллаборации, интеграции, листинги.
-5. Вывод — брать, не брать или ждать, почему и при каком условии. Учти ончейн-факты: если они говорят «не брать»,
-   хорошие новости этого не отменяют.
+5. Вывод — начни ровно с одного из трёх: «Не брать», «Ждать» или «Можно смотреть», дальше почему и при каком
+   условии. Учти ончейн-факты: если они говорят «не брать», хорошие новости этого не отменяют.
+   Никаких советов, сколько вкладывать, «небольшими суммами», «как ставку» — это не твоё дело.
 
 Жёсткие правила:
 - Каждое утверждение — с номером источника в скобках. Нет в материалах — пиши «не найдено».
 - Даты: если у сведения нет даты — допиши «(дата неизвестна)»; если оно старше трёх месяцев от сегодня — «(устарело, <месяц год>)».
   Раунд инвестиций двухлетней давности — это история, а не свежая новость.
 - Материал может быть про другой проект с таким же тикером. Если он не совпадает по сайту, адресу или описанию — не используй.
+- Различай, КТО говорит. Сайт проекта о себе — это заявление проекта: пиши «по словам проекта».
+  Посты пользователей (Binance Square, X, Reddit, Medium, форумы) — это не официальные новости:
+  пиши «пост пользователя, не подтверждено». Листинг считай подтверждённым, только если источник — сама биржа
+  или CoinGecko. Страницы обозревателя блоков (basescan) — это не новости и не развитие, про них не пиши.
 - Без вступлений, без markdown, без звёздочек. Всего не больше 1300 символов."""
 
 
 def _key():
     return os.getenv("GEMINI_API_KEY", "").strip()
+
+
+def _groq_key():
+    return os.getenv("GROQ_API_KEY", "").strip()
 
 
 def _clean(t, n):
@@ -148,6 +163,15 @@ async def github_activity(client, repo_url):
                     f"коммитов за 30 дней: {n}{'+' if n == 100 else ''}. {j.get('description') or ''}"}
 
 
+# Pages every token gets automatically: they prove nothing about the project, and
+# a model reads "web3.binance.com/token/..." as "listed on Binance" (seen 23.09.2026).
+AUTO_PAGES = ("dexscreener.com", "geckoterminal.com", "basescan.org", "etherscan.io", "blockscout.com",
+              "web3.binance.com", "dextools.io", "birdeye.so", "defined.fi", "coinstats.app", "gmgn.ai")
+# Anyone can post there; the model must not read it as an announcement.
+USER_POSTS = ("binance.com/en/square", "binance.com/square", "x.com/", "twitter.com/", "reddit.com", "medium.com",
+              "t.me/", "youtube.com", "tiktok.com", "facebook.com", "substack.com", "warpcast.com", "farcaster")
+
+
 def _about_this_project(m, d, site_host):
     """Keep a web result only if it names this project, its site or its contract."""
     blob = f"{m['title']} {m['url']} {m['text']}".lower()
@@ -182,10 +206,12 @@ async def gather(d):
     dropped = 0
     for group in found:
         for m in group:
-            if m["url"] in seen or any(b in m["url"] for b in ("dexscreener.com", "geckoterminal.com")):
+            if m["url"] in seen or any(b in m["url"] for b in AUTO_PAGES):
                 continue
             seen.add(m["url"])
             if _about_this_project(m, d, site_host):
+                if any(b in m["url"] for b in USER_POSTS):
+                    m = {**m, "title": f"ПОСТ ПОЛЬЗОВАТЕЛЯ, не официальная новость: {m['title']}"}
                 materials.append(m)
             else:
                 dropped += 1
@@ -227,9 +253,59 @@ def _facts(d, assessment):
     return "\n".join(lines), verdict
 
 
-async def project_read(d: dict, assessment) -> str | None:
-    key = _key()
+async def _ask_gemini(client, key, prompt):
+    """Newest Gemini that answers. Returns (text, model) or (None, why)."""
     if not key:
+        return None, "нет ключа"
+    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}
+    last = ""
+    for model in await _models(client, key):
+        try:
+            r = await client.post(f"{API}/models/{model}:generateContent", headers={"x-goog-api-key": key}, json=body)
+        except httpx.HTTPError as exc:
+            last = f"{model}: {type(exc).__name__}"
+            continue
+        if r.status_code != 200:
+            last = f"{model}: {r.status_code}"
+            continue
+        cand = (r.json().get("candidates") or [{}])[0]
+        text = "".join(p.get("text", "") for p in (cand.get("content") or {}).get("parts", [])).strip()
+        if text:
+            return text, model
+        last = f"{model}: пустой ответ"
+    return None, last
+
+
+async def _ask_groq(client, key, prompt):
+    """Same prompt on Groq. Returns (text, model) or (None, why)."""
+    if not key:
+        return None, "нет ключа"
+    last = ""
+    for model in GROQ_MODELS:
+        body = {"model": model, "max_tokens": 2000, "temperature": 0.1,
+                "messages": [{"role": "user", "content": prompt}]}
+        if "gpt-oss" in model:
+            body["reasoning_effort"] = "medium"
+        try:
+            r = await client.post(f"{GROQ}/chat/completions", headers={"Authorization": f"Bearer {key}"}, json=body)
+        except httpx.HTTPError as exc:
+            last = f"{model}: {type(exc).__name__}"
+            continue
+        if r.status_code != 200:
+            last = f"{model}: {r.status_code}"
+            if r.status_code in (401, 429):  # the key or its quota: other models won't help
+                break
+            continue
+        text = ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        if text.strip():
+            return text.strip(), model
+        last = f"{model}: пустой ответ"
+    return None, last
+
+
+async def project_read(d: dict, assessment) -> str | None:
+    key, groq_key = _key(), _groq_key()
+    if not key and not groq_key:
         return None
     materials, dropped = await gather(d)
     if not materials:
@@ -239,32 +315,22 @@ async def project_read(d: dict, assessment) -> str | None:
     prompt = PROMPT.format(today=time.strftime("%d.%m.%Y"), symbol=d["symbol"], name=d["name"], chain=d["chain"],
                            address=d["address"], site=(d["websites"] or ["нет"])[0], facts=facts, verdict=verdict,
                            materials=mat)
-    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}
     async with httpx.AsyncClient(timeout=60) as client:
-        last = ""
-        for model in await _models(client, key):
-            try:
-                r = await client.post(f"{API}/models/{model}:generateContent", headers={"x-goog-api-key": key},
-                                      json=body)
-            except httpx.HTTPError as exc:
-                last = f"{model}: {type(exc).__name__}"
-                continue
-            if r.status_code != 200:
-                last = f"{model}: {r.status_code}"
-                continue
-            cand = (r.json().get("candidates") or [{}])[0]
-            text = "".join(p.get("text", "") for p in (cand.get("content") or {}).get("parts", [])).strip()
+        text, model = await _ask_gemini(client, key, prompt)
+        if not text:
+            gemini_why = model
+            text, model = await _ask_groq(client, groq_key, prompt)
             if not text:
-                last = f"{model}: пустой ответ"
-                continue
-            text = text.replace("**", "").replace("*", "")
-            cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text) if 0 < int(n) <= len(materials)})
-            out = html.escape(text)
-            if cited:
-                out += "\nИсточники: " + " · ".join(
-                    f'<a href="{html.escape(materials[i - 1]["url"])}">[{i}]</a>' for i in cited)
-            note = f"ИИ: {model}, материалов {len(materials)}"
-            if dropped:
-                note += f", отброшено про другие проекты: {dropped}"
-            return out + f"\n<i>{html.escape(note)}</i>"
-    return f"<i>ИИ-разбор не получился: модели не ответили ({html.escape(last)})</i>"
+                return (f"<i>ИИ-разбор не получился: Gemini — {html.escape(gemini_why)}; "
+                        f"Groq — {html.escape(model)}</i>")
+            model = f"{model} (Groq: Gemini был занят)" if key else model
+    text = text.replace("**", "").replace("*", "")
+    cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text) if 0 < int(n) <= len(materials)})
+    out = html.escape(text)
+    if cited:
+        out += "\nИсточники: " + " · ".join(
+            f'<a href="{html.escape(materials[i - 1]["url"])}">[{i}]</a>' for i in cited)
+    note = f"ИИ: {model}, материалов {len(materials)}"
+    if dropped:
+        note += f", отброшено про другие проекты: {dropped}"
+    return out + f"\n<i>{html.escape(note)}</i>"
