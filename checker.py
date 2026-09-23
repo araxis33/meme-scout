@@ -400,6 +400,23 @@ async def snipers(client, chain, token, creation_block, pool_created_ms, lp_addr
             "still": still, "still_pct": held / total_raw * 100}
 
 
+DEX_WORDS = ("uniswap", "aerodrome", "pancake", "sushi", "baseswap", "dex", "balancer", "curve", "swap", "velodrome")
+
+
+async def cg_listing(client, chain, address):
+    """CoinGecko: market-cap rank and the centralised exchanges that list the coin."""
+    platform = {"base": "base"}.get(chain)
+    if not platform:
+        return None
+    d = await _get(client, f"https://api.coingecko.com/api/v3/coins/{platform}/contract/{address}")
+    if not d or d.get("error"):
+        return None
+    cex = sorted({(t.get("market") or {}).get("name") for t in d.get("tickers") or []
+                  if (t.get("market") or {}).get("identifier")
+                  and not any(w in t["market"]["identifier"] for w in DEX_WORDS)} - {None})
+    return {"rank": d.get("market_cap_rank"), "cex": cex, "id": d.get("id")}
+
+
 async def collect(address: str) -> dict:
     """Everything we know about a token, gathered in parallel where possible."""
     address = address.lower()
@@ -410,10 +427,10 @@ async def collect(address: str) -> dict:
         if chain not in BLOCKSCOUT:
             return {"error": f"Монета торгуется в сети «{chain}». Пока проверяю только Base и Robinhood Chain."}
 
-        gp, hp, pools, info, token_info = await asyncio.gather(
+        gp, hp, pools, info, token_info, cg = await asyncio.gather(
             goplus_raw(client, chain, address), honeypot_sim(client, chain, address),
             gecko_pools(client, chain, address), bs(client, chain, f"/api/v2/addresses/{address}"),
-            bs(client, chain, f"/api/v2/tokens/{address}"))
+            bs(client, chain, f"/api/v2/tokens/{address}"), cg_listing(client, chain, address))
 
         decimals = int((token_info or {}).get("decimals") or 18)
         total_supply = _num((token_info or {}).get("total_supply")) or 0
@@ -465,7 +482,7 @@ async def collect(address: str) -> dict:
         "socials": [(s.get("type"), s.get("url")) for s in info_block.get("socials") or []],
         "verified": (info or {}).get("is_verified"),
         "holder_count": (token_info or {}).get("holders_count") or (gp or {}).get("holder_count"),
-        "gp": gp or {}, "hp": hp or {}, "dev": dev_info, "holders": holders, "exits": exits, "snipe": snipe,
+        "cg": cg or {}, "gp": gp or {}, "hp": hp or {}, "dev": dev_info, "holders": holders, "exits": exits, "snipe": snipe,
         "pair_liq": {(p.get("pairAddress") or "").lower(): (p.get("liquidity") or {}).get("usd") or 0 for p in pairs},
         "url": best.get("url"),
     }
@@ -648,13 +665,61 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
     if d["age_h"] is not None and d["age_h"] < 24:
         warn.append(f"монете {d['age_h']:.0f} ч")
 
+    # The rules above are "how to spot a trap in a fresh meme coin". Applied to a
+    # 2.5-year-old protocol on 56 exchanges they called VIRTUAL "careful" and the
+    # AI read it as "don't buy" (23.09.2026): team roles, treasury and staking
+    # contracts among the top holders, protocol-owned liquidity - normal there.
+    # For a mature project those become a note on trust in the team, not alarms.
+    tier = maturity(d)
+    d["tier"] = tier
+    if tier["level"] == "mature":
+        traps = ("продать нельзя", "налог на продажу", "нельзя продать", "налог можно задать",
+                 "автор уже выпускал", "ликвидность всего")
+        kept_stop = [s for s in stop if s.startswith(traps)]
+        rights = [s for s in stop + warn if s not in kept_stop]
+        d["team_rights"] = rights
+        stop, warn = kept_stop, []
+        good.insert(0, tier["summary"])
+    elif tier["level"] == "grown":
+        good.insert(0, tier["summary"])
+    elif tier["majors"]:
+        good.append(f"торгуется на крупных биржах: {', '.join(tier['majors'][:4])}")
+
     if stop:
         verdict = "⛔ НЕ БРАТЬ"
+    elif tier["level"] == "mature":
+        verdict = "🟢 КРУПНЫЙ ПРОЕКТ — признаков ловушки нет"
     elif len(warn) >= 3:
         verdict = "⚠️ ОСТОРОЖНО"
     else:
         verdict = "🟢 МОЖНО СМОТРЕТЬ"
     return verdict, stop, warn, good
+
+
+MAJOR_CEX = ("Binance", "Coinbase Exchange", "Kraken", "OKX", "Bybit", "Upbit", "Bitget", "KuCoin", "Gate")
+
+
+def maturity(d):
+    """How established the project is: age, size, holders, real exchange listings.
+
+    "mature" needs all of: half a year of trading, $1M+ liquidity, and either a
+    major exchange or 100k+ holders. A coin that passes is judged on traps only.
+    """
+    cg = d.get("cg") or {}
+    cex = cg.get("cex") or []
+    majors = [x for x in MAJOR_CEX if x in cex]
+    holders = int(d.get("holder_count") or 0)
+    age_d = (d.get("age_h") or 0) / 24
+    facts = [f"{age_d:.0f} дн. торгов" if age_d >= 2 else None,
+             f"держателей {holders:,}".replace(",", " ") if holders else None,
+             f"на {len(cex)} биржах" + (f", в т.ч. {', '.join(majors[:4])}" if majors else "") if cex else None,
+             f"место #{cg['rank']} на CoinGecko" if cg.get("rank") else None]
+    summary = "зрелый проект: " + ", ".join(f for f in facts if f)
+    if age_d >= 180 and d["liq"] >= 1_000_000 and (majors or holders >= 100_000):
+        return {"level": "mature", "summary": summary, "majors": majors}
+    if age_d >= 30 and d["liq"] >= 250_000 and len(cex) >= 3:
+        return {"level": "grown", "summary": summary.replace("зрелый проект", "уже не новичок"), "majors": majors}
+    return {"level": "new", "summary": "", "majors": majors}
 
 
 # ---------------------------------------------------------------- report
@@ -775,8 +840,13 @@ def render(d: dict, project: str | None = None) -> str:
         L.append(f"⚠️ {e(s)}")
     for s in good:
         L.append(f"✅ {e(s)}")
+    if d.get("team_rights"):
+        L += ["", "<b>Права команды — справка, не тревога</b>",
+              "<i>У крупных проектов команда обычно оставляет себе управление, а среди крупнейших держателей — "
+              "пулы, стейкинг и казна. Это вопрос доверия к команде, а не признак ловушки:</i>"]
+        L += [f"• {e(s)}" for s in d["team_rights"]]
 
-    age = f"{d['age_h'] / 24:.0f} дн." if d["age_h"] and d["age_h"] >= 48 else f"{d['age_h'] or 0:.0f} ч"
+    age =f"{d['age_h'] / 24:.0f} дн." if d["age_h"] and d["age_h"] >= 48 else f"{d['age_h'] or 0:.0f} ч"
     L += ["", "<b>Рынок</b>",
           f"Капа {_usd(d['mcap'])} · ликвидность {_usd(d['liq'])} · объём за сутки {_usd(d['vol'])}",
           f"Возраст {age} · пулов {d['pools']} · держателей {d['holder_count'] or '?'}",
