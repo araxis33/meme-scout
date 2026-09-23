@@ -83,9 +83,14 @@ def recheck():
     rows = json.loads(OUT.read_text(encoding="utf-8"))
     for r in rows:
         pairs = get(f"https://api.dexscreener.com/tokens/v1/base/{r['address']}") or []
-        liq = sum((p.get("liquidity") or {}).get("usd") or 0 for p in pairs) if isinstance(pairs, list) else 0
-        r["liq_now"] = round(liq)
-        r["alive"] = liq >= 0.5 * r["liq_at_check"] and liq >= 10000
+        ok = isinstance(pairs, list)
+        liq = sum((p.get("liquidity") or {}).get("usd") or 0 for p in pairs) if ok else 0
+        vol = sum((p.get("volume") or {}).get("h24") or 0 for p in pairs) if ok else 0
+        r["liq_now"], r["vol_now"] = round(liq), round(vol)
+        # Alive = still funded AND still traded. A pool nobody trades can sit
+        # untouched for months; counting it alive would score "liquidity for
+        # show" verdicts as wrong.
+        r["alive"] = liq >= 0.5 * r["liq_at_check"] and liq >= 10000 and vol >= 5000
     by = {}
     for r in rows:
         k = r["verdict"].split()[0] + " " + r["verdict"].split()[1]
