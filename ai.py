@@ -20,6 +20,7 @@ Without any key this returns None and /check still answers with the on-chain par
 """
 import asyncio
 import html
+import logging
 import os
 import re
 import time
@@ -74,6 +75,8 @@ PROMPT = """Ты независимый аналитик криптопроек�
   Посты пользователей (Binance Square, X, Reddit, Medium, форумы) — это не официальные новости:
   пиши «пост пользователя, не подтверждено». Листинг считай подтверждённым, только если источник — сама биржа
   или CoinGecko. Страницы обозревателя блоков (basescan) — это не новости и не развитие, про них не пиши.
+- Crunchbase, Tracxn, CB Insights, CryptoRank, RootData, Messari — это справочники-источники, а не инвесторы
+  и не партнёры. Инвестор — только фонд или компания, которые названы вложившими деньги.
 - Без вступлений, без markdown, без звёздочек. Всего не больше 1300 символов."""
 
 
@@ -409,9 +412,9 @@ async def project_read(d: dict, assessment) -> str | None:
     if cited:
         out += "\nИсточники: " + " · ".join(
             f'<a href="{html.escape(materials[i - 1]["url"])}">[{i}]</a>' for i in cited)
-    note = f"ИИ: {model}, материалов {len(materials)}"
-    if SEARCH_STATE["blocked"]:
-        note += "; поиск в интернете временно недоступен — разбор только по сайту, CoinGecko, DefiLlama и GitHub"
-    if dropped:
-        note += f", отброшено про другие проекты: {dropped}"
-    return out + f"\n<i>{html.escape(note)}</i>"
+    # The reader sees only "AI"; which model answered and what failed along the
+    # way goes to the log - he asked not to show the machinery (23.09.2026).
+    logging.getLogger("meme-scout.ai").info(
+        "project read %s: model=%s materials=%d dropped=%d search_blocked=%s",
+        d["symbol"], model, len(materials), dropped, SEARCH_STATE["blocked"])
+    return out + "\n<i>Разбор: ИИ</i>"

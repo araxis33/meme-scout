@@ -20,10 +20,39 @@ def get(u):
             time.sleep(10 + 10 * i)
     return {}
 
+def candidates_from_db(n=25):
+    """Coins the bot saw in the last 14 days that still have $15k+ liquidity now."""
+    import sqlite3
+    db = sqlite3.connect("file:" + str(Path(__file__).resolve().parent.parent / "meme_scout.sqlite3") + "?mode=ro", uri=True)
+    addrs = [r[0].lower() for r in db.execute(
+        "select address from tokens where chain='base' and first_seen > ? and verdict != 'spam'",
+        (time.time() - 14 * 86400,))]
+    out = []
+    for i in range(0, len(addrs), 30):
+        data = get("https://api.dexscreener.com/tokens/v1/base/" + ",".join(addrs[i:i + 30])) or []
+        best = {}
+        for p in data if isinstance(data, list) else []:
+            a = (p.get("baseToken") or {}).get("address", "").lower()
+            liq = (p.get("liquidity") or {}).get("usd") or 0
+            if liq > best.get(a, (0,))[0]:
+                best[a] = (liq, p.get("pairCreatedAt"), (p.get("baseToken") or {}).get("symbol"))
+        for a, (liq, created, sym) in best.items():
+            if liq >= 15000 and created:
+                age_d = (time.time() - created / 1000) / 86400
+                if 0.5 <= age_d <= 14:
+                    out.append({"address": a, "name": sym, "age_d": round(age_d, 1), "liq0": round(liq)})
+        time.sleep(0.3)
+    out.sort(key=lambda x: -x["liq0"])
+    return out[:n]
+
+
 def candidates(n=20):
     seen, out = set(), []
-    for page in (1, 2, 3):
-        for path in (f"trending_pools?duration=24h&page={page}", f"pools?sort=h24_volume_usd_desc&page={page}"):
+    paths = [f"trending_pools?duration=24h&page={p}" for p in (1, 2, 3)]
+    paths += [f"trending_pools?duration=6h&page={p}" for p in (1, 2)]
+    paths += [f"pools?sort=h24_volume_usd_desc&page={p}" for p in (1, 2, 3, 4, 5)]
+    for path in paths:
+        if True:
             for p in get(f"https://api.geckoterminal.com/api/v2/networks/base/{path}").get("data", []):
                 a = p["attributes"]
                 tok = p["relationships"]["base_token"]["data"]["id"].split("_", 1)[1].lower()
@@ -32,7 +61,7 @@ def candidates(n=20):
                     continue
                 age_d = (time.time() - calendar.timegm(time.strptime(ca[:19], "%Y-%m-%dT%H:%M:%S"))) / 86400
                 liq = float(a.get("reserve_in_usd") or 0)
-                if 1 <= age_d <= 10 and liq >= 20000:
+                if 0.5 <= age_d <= 14 and liq >= 15000:
                     seen.add(tok)
                     out.append({"address": tok, "name": a["name"], "age_d": round(age_d, 1), "liq0": round(liq)})
             time.sleep(2.5)
@@ -40,7 +69,7 @@ def candidates(n=20):
 
 async def record():
     rows = []
-    for c in candidates():
+    for c in candidates_from_db():
         d = await checker.collect(c["address"])
         if d.get("error"):
             continue

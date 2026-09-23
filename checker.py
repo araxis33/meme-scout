@@ -202,10 +202,20 @@ async def kyber_sell(client, chain, address, amount_raw):
 
 # ---------------------------------------------------------------- analysis
 
-async def deployer_record(client, chain, token, creation_tx):
-    """Who launched it, what else they launched, and where their money came from."""
-    out = {"dev": None, "factory": None, "launches": [], "funder": None, "funder_label": None,
-           "funded_before_deploy_min": None, "deploy_ts": None}
+DEV_HISTORY_PAGES = 3  # 150 transactions
+
+
+async def deployer_record(client, chain, token, creation_tx, out=None):
+    """Who launched it, what else they launched, and where their money came from.
+
+    Fills `out` as it goes, so a caller that runs out of time still shows what
+    was found. The history is read back only 150 transactions: a burner wallet -
+    the case that matters - is shorter than that; a longer one is an old active
+    wallet, and that is the finding ("history too slow" was all it used to say).
+    """
+    out = out if out is not None else {}
+    out.update({"dev": None, "factory": None, "launches": [], "funder": None, "funder_label": None,
+                "funded_before_deploy_min": None, "deploy_ts": None})
     tx = await bs(client, chain, f"/api/v2/transactions/{creation_tx}") if creation_tx else None
     if not tx:
         return out
@@ -219,13 +229,16 @@ async def deployer_record(client, chain, token, creation_tx):
     if to and to.get("hash"):
         out["factory"] = to.get("name") or to.get("hash")
 
-    txs, complete = await address_txs(client, chain, dev)
+    txs, complete = await address_txs(client, chain, dev, DEV_HISTORY_PAGES)
+    out["dev_tx_count"] = len(txs)
+    out["dev_history_complete"] = complete
     created = [t["created_contract"]["hash"].lower() for t in txs if t.get("created_contract")]
     if to and to.get("hash"):
         same_factory = [t["hash"] for t in txs if ((t.get("to") or {}).get("hash") or "").lower()
                         == to["hash"].lower() and t.get("status") == "ok"][:10]
-        for h in same_factory:
-            internal = await bs(client, chain, f"/api/v2/transactions/{h}/internal-transactions")
+        inner = await asyncio.gather(*(bs(client, chain, f"/api/v2/transactions/{h}/internal-transactions")
+                                       for h in same_factory))
+        for internal in inner:
             for it in (internal or {}).get("items") or []:
                 if it.get("created_contract"):
                     created.append(it["created_contract"]["hash"].lower())
@@ -244,7 +257,6 @@ async def deployer_record(client, chain, token, creation_tx):
         out["launches"] = [dict(address=a, **o) for a, o in launches.items()]
         out["contracts_created"] = len(created)
 
-    out["dev_tx_count"] = len(txs) if complete else f"{len(txs)}+"
     funder, ts, amount = await funder_of(client, chain, dev, txs, complete, before=out["deploy_ts"])
     out["funder"] = funder
     out["funder_amount"] = amount
@@ -280,6 +292,9 @@ async def holder_map(client, chain, token, total_supply, dev, lp_addrs):
         # Where the coins themselves came from: bought from a pool, or handed
         # over by someone. The earliest transfer on the first page is enough.
         tt = await bs(client, chain, f"/api/v2/addresses/{r['address']}/token-transfers", {"token": token})
+        # A failed call (rate limit) is "not checked", not "nothing found": the
+        # site once dropped "the deployer handed out 52%" this way without a word.
+        r["checked"] = tt is not None
         items = (tt or {}).get("items") or []
         if items:
             src = ((items[-1].get("from") or {}).get("hash") or "").lower()
@@ -289,7 +304,7 @@ async def holder_map(client, chain, token, total_supply, dev, lp_addrs):
     done, pending = await asyncio.wait(tasks, timeout=HOLDERS_BUDGET_S) if tasks else (set(), set())
     for t in pending:
         t.cancel()
-    unchecked = len(pending)
+    unchecked = sum(1 for r in wallets if not r.get("checked"))
     from_dev = [r for r in wallets if dev and r.get("got_from") == dev]
     for r in from_dev:
         r["exchange"] = (await wallet_profile(client, chain, r["address"]))["exchange"]
@@ -400,6 +415,25 @@ async def snipers(client, chain, token, creation_block, pool_created_ms, lp_addr
             "still": still, "still_pct": held / total_raw * 100}
 
 
+async def same_ticker(client, chain, address, symbol):
+    """Other tokens on this chain with the same ticker, biggest liquidity first.
+
+    On 23.09.2026 Base had five "LAPTOP"s with $250k-$1.2M in their pools; the
+    forward test checked one of the copies and called it "worth a look".
+    """
+    d = await _get(client, "https://api.dexscreener.com/latest/dex/search", {"q": symbol})
+    agg = {}
+    for p in (d or {}).get("pairs") or []:
+        b = p.get("baseToken") or {}
+        if p.get("chainId") != chain or (b.get("symbol") or "").lower() != (symbol or "").lower():
+            continue
+        a = (b.get("address") or "").lower()
+        o = agg.setdefault(a, {"address": a, "name": b.get("name"), "liq": 0.0, "vol": 0.0})
+        o["liq"] += (p.get("liquidity") or {}).get("usd") or 0
+        o["vol"] += (p.get("volume") or {}).get("h24") or 0
+    return sorted((o for a, o in agg.items() if a != address), key=lambda o: -o["liq"])
+
+
 DEX_WORDS = ("uniswap", "aerodrome", "pancake", "sushi", "baseswap", "dex", "balancer", "curve", "swap", "velodrome")
 
 
@@ -459,19 +493,26 @@ async def collect(address: str) -> dict:
             return usd, (await kyber_sell(client, chain, address, usd / price * 10 ** decimals)) if price > 0 else None
 
         async def dev_part():
+            # Out of time, keep what was already found instead of throwing it all away.
+            partial = {}
             try:
-                return await asyncio.wait_for(deployer_record(client, chain, address, creation), DEPLOYER_BUDGET_S)
+                return await asyncio.wait_for(deployer_record(client, chain, address, creation, partial),
+                                              DEPLOYER_BUDGET_S)
             except asyncio.TimeoutError:
-                return {"dev": dev, "launches": [], "timeout": True}
+                partial.setdefault("dev", dev)
+                partial.setdefault("launches", [])
+                return partial
 
         creation_block = (tx or {}).get("block_number") or (tx or {}).get("block")
-        dev_info, holders, q500, q5000, snipe = await asyncio.gather(
+        symbol = (best.get("baseToken") or {}).get("symbol") or ""
+        dev_info, holders, q500, q5000, snipe, twins = await asyncio.gather(
             dev_part(),
             holder_map(client, chain, address, total_supply, dev, lp_addrs),
             sell(500), sell(5000),
             snipers(client, chain, address, int(creation_block) if creation_block else None,
                     min((p.get("pairCreatedAt") or 9e15) for p in pairs) if pairs else None, lp_addrs,
-                    total_supply, dev))
+                    total_supply, dev),
+            same_ticker(client, chain, address, symbol))
         exits = {usd: q for usd, q in (q500, q5000) if q and q[0] > 0}
 
     liq = sum((p.get("liquidity") or {}).get("usd") or 0 for p in pairs)
@@ -494,6 +535,8 @@ async def collect(address: str) -> dict:
         "verified": (info or {}).get("is_verified"),
         "holder_count": (token_info or {}).get("holders_count") or (gp or {}).get("holder_count"),
         "cg": cg or {}, "gp": gp or {}, "hp": hp or {}, "dev": dev_info, "holders": holders, "exits": exits, "snipe": snipe,
+        "twins": twins,
+        "ds_buys": sum(((p.get("txns") or {}).get("h24") or {}).get("buys") or 0 for p in pairs),
         "pair_liq": {(p.get("pairAddress") or "").lower(): (p.get("liquidity") or {}).get("usd") or 0 for p in pairs},
         "url": best.get("url"),
     }
@@ -650,6 +693,8 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
         (stop if share > 15 else warn).append(text)
     for f, g in h["handed"][:1]:
         warn.append(f"кошельков, получивших монеты с одного адреса: {len(g)}, вместе {sum(r['pct'] for r in g):.0f}%")
+    if h.get("unchecked", 0) >= 3:
+        warn.append(f"не удалось проверить связи {h['unchecked']} крупных кошельков — вывод неполный")
     if h["dev_funded"]:
         warn.append(f"автор сам профинансировал {len(h['dev_funded'])} из крупных держателей")
 
@@ -675,6 +720,20 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
         warn.append(f"в среднем {d['buys'] / d['buyers']:.0f} покупок на кошелёк — похоже на ботов")
     if d["age_h"] is not None and d["age_h"] < 24:
         warn.append(f"монете {d['age_h']:.0f} ч")
+
+    # Liquidity with no trading is set dressing: $250k pools with 0-1 buys and $0
+    # volume a day were "worth a look" in the 23.09 forward test.
+    if d["liq"] >= 10000 and d.get("ds_buys", 0) < 5 and d["vol"] < 1000:
+        stop.append(f"торговли нет: за сутки {d.get('ds_buys', 0)} покупок и объём ${d['vol']:,.0f} "
+                    f"при ликвидности ${d['liq']:,.0f} — ликвидность для вида")
+    twins = d.get("twins") or []
+    if twins and twins[0]["liq"] >= 100000:
+        big = twins[0]
+        if big["liq"] >= 3 * max(d["liq"], 1):
+            stop.append(f"похоже на копию: у настоящего {d['symbol']} другой адрес ({_short(big['address'])}, "
+                        f"ликвидность ${big['liq']:,.0f}) — сверь адрес")
+        elif big["liq"] > d["liq"]:
+            warn.append(f"есть другая монета {d['symbol']} крупнее ({_short(big['address'])}) — сверь адрес")
 
     # The rules above are "how to spot a trap in a fresh meme coin". Applied to a
     # 2.5-year-old protocol on 56 exchanges they called VIRTUAL "careful" and the
@@ -885,9 +944,9 @@ def render(d: dict, project: str | None = None) -> str:
                         f", за {m / 60:.0f} ч до запуска" if m < 2880 else f", за {m / 1440:.0f} дн. до запуска")
             L.append(f"Первые деньги: <code>{_short(dv['funder'])}</code>{label}{amt}{when}")
         launches = dv.get("launches") or []
-        if dv.get("timeout"):
-            L.append("<i>Историю автора не успел проверить — обозреватель блоков отвечает медленно</i>")
-        elif launches:
+        if dv.get("dev_history_complete") is False and not dv.get("funder"):
+            L.append(f"Кошелёк давний и активный: больше {dv.get('dev_tx_count') or 150} операций — не одноразовый")
+        if launches:
             alive = [l for l in launches if l["liq"] >= 1000]
             names = ", ".join(f"{e(str(l['symbol']))} {_usd(l['liq'])}" for l in sorted(alive, key=lambda x: -x["liq"])[:4])
             L.append(f"Другие его монеты: {len(launches)}, живы {len(alive)}" + (f" ({names})" if names else ""))
