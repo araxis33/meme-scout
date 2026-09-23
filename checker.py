@@ -712,6 +712,10 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
 
     # Exchange hot wallets hold customers' coins; they are not concentration
     # (two of FLOCK's "top-10 wallets" were exchanges with 12,000+ ETH).
+    # No holder data must not read as "no concentration": an unchecked coin
+    # scored better than a checked one (Blockscout refused under load, 23.09).
+    if not h["rows"]:
+        add("распределение монет между держателями проверить не удалось", 1)
     wallets = [r for r in h["rows"] if r["kind"] == "wallet" and not r.get("exchange")]
     top10 = sum(r["pct"] for r in wallets[:10])
     if top10 > 50:
