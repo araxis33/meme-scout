@@ -517,9 +517,15 @@ async def collect(address: str) -> dict:
 
     liq = sum((p.get("liquidity") or {}).get("usd") or 0 for p in pairs)
     vol = sum((p.get("volume") or {}).get("h24") or 0 for p in pairs)
-    buyers = sum(((p["attributes"].get("transactions") or {}).get("h24") or {}).get("buyers") or 0 for p in pools)
-    sellers = sum(((p["attributes"].get("transactions") or {}).get("h24") or {}).get("sellers") or 0 for p in pools)
-    buys = sum(((p["attributes"].get("transactions") or {}).get("h24") or {}).get("buys") or 0 for p in pools)
+    # GeckoTerminal is the only source of DISTINCT buyers, and it refuses when
+    # asked too often. Empty means "unknown", not "nobody": TIBBIR, traded
+    # ~1,800 times a day, was reported with "0 buyers" (23.09.2026).
+    if pools:
+        buyers = sum(((p["attributes"].get("transactions") or {}).get("h24") or {}).get("buyers") or 0 for p in pools)
+        sellers = sum(((p["attributes"].get("transactions") or {}).get("h24") or {}).get("sellers") or 0 for p in pools)
+        buys = sum(((p["attributes"].get("transactions") or {}).get("h24") or {}).get("buys") or 0 for p in pools)
+    else:
+        buyers = sellers = buys = None
     created_ms = min((p.get("pairCreatedAt") or 9e15) for p in pairs)
     info_block = best.get("info") or {}
     return {
@@ -541,6 +547,7 @@ async def collect(address: str) -> dict:
         "cg": cg or {}, "gp": gp or {}, "hp": hp or {}, "dev": dev_info, "holders": holders, "exits": exits, "snipe": snipe,
         "twins": twins,
         "ds_buys": sum(((p.get("txns") or {}).get("h24") or {}).get("buys") or 0 for p in pairs),
+        "ds_sells": sum(((p.get("txns") or {}).get("h24") or {}).get("sells") or 0 for p in pairs),
         "pair_liq": {(p.get("pairAddress") or "").lower(): (p.get("liquidity") or {}).get("usd") or 0 for p in pairs},
         "url": best.get("url"),
     }
@@ -714,13 +721,19 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
             and not dv.get("funder_label") and (dv.get("funder_amount") or 0) < 0.05:
         warn.append(f"кошелёк автора получил деньги за {dv['funded_before_deploy_min']:.0f} мин до запуска — одноразовый")
 
-    if d["buyers"] >= 300:
+    if d["buyers"] is None:
+        n = d.get("ds_buys", 0)
+        if n >= 300:
+            good.append(f"{n} покупок за сутки")
+        elif n < 20:
+            warn.append(f"всего {n} покупок за сутки")
+    elif d["buyers"] >= 300:
         good.append(f"{d['buyers']} разных покупателей за сутки")
     elif d["buyers"] < 50:
         warn.append(f"всего {d['buyers']} разных покупателей за сутки")
     if d["liq"] and d["vol"] / d["liq"] > 20:
         warn.append("объём в 20+ раз больше ликвидности — похоже на накрутку")
-    if d["buyers"] and d["buys"] / d["buyers"] > 8:
+    if d["buyers"] and d["buys"] and d["buys"] / d["buyers"] > 8:
         warn.append(f"в среднем {d['buys'] / d['buyers']:.0f} покупок на кошелёк — похоже на ботов")
     if d["age_h"] is not None and d["age_h"] < 24:
         warn.append(f"монете {d['age_h']:.0f} ч")
@@ -894,8 +907,10 @@ def checklist(d: dict) -> list[str]:
     if sn and sn.get("found"):
         bundle = f", из них {sn['same_block']} — в самом первом блоке" if sn["same_block"] > 1 else ""
         mark = bad if sn["still_pct"] > 15 else "⚠️" if sn["early"] >= 10 else ok
-        rows.append(f"{mark} Снайперы (купили в первые ~6 с): {sn['early']}{bundle}; "
-                    f"держат сейчас {sn['still_pct']:.1f}%")
+        threat = ("могут разом продать и обвалить цену" if sn["still_pct"] > 15 else
+                  "угрозы сброса почти нет" if sn["still_pct"] < 3 else "следи, не начнут ли продавать")
+        rows.append(f"{mark} Снайперы — кошельки, скупившие монету в первые ~6 с после запуска (боты или свои): "
+                    f"{sn['early']}{bundle}. Сейчас у них {sn['still_pct']:.1f}% монет — {threat}")
     elif sn and not sn.get("found"):
         rows.append(f"{ok} Снайперов на старте не видно")
     return rows
@@ -924,7 +939,8 @@ def render(d: dict, project: str | None = None) -> str:
     L += ["", "<b>Рынок</b>",
           f"Капа {_usd(d['mcap'])} · ликвидность {_usd(d['liq'])} · объём за сутки {_usd(d['vol'])}",
           f"Возраст {age} · пулов {d['pools']} · держателей {d['holder_count'] or '?'}",
-          f"За сутки: {d['buyers']} покупателей, {d['sellers']} продавцов"]
+          (f"За сутки: {d['buyers']} покупателей, {d['sellers']} продавцов" if d["buyers"] is not None else
+           f"За сутки: {d.get('ds_buys', 0)} покупок, {d.get('ds_sells', 0)} продаж")]
     if d["exits"] and any(s.startswith("продать нельзя") for s in stop):
         L.append("Маршрут обмена обещает выкуп, но симуляция продажи падает — этим цифрам не верь")
     elif d["exits"]:
