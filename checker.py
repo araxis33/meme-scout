@@ -526,7 +526,11 @@ async def collect(address: str) -> dict:
         "chain": chain, "address": address,
         "symbol": (best.get("baseToken") or {}).get("symbol") or "?",
         "name": (best.get("baseToken") or {}).get("name") or "?",
-        "price": price, "liq": liq, "vol": vol, "mcap": _num(best.get("marketCap") or best.get("fdv")) or 0,
+        # Median over pools: DexScreener's biggest VIRTUAL pool said $694M while
+        # every other pool said ~$458M (23.09.2026); one bad pool must not set it.
+        "price": price, "liq": liq, "vol": vol,
+        "mcap": (sorted(m)[len(m) // 2] if (m := [x for x in (_num(p.get("marketCap") or p.get("fdv")) for p in pairs)
+                                                  if x]) else 0),
         "age_h": (time.time() - created_ms / 1000) / 3600 if created_ms < 9e15 else None,
         "pools": len(pairs), "buyers": buyers, "sellers": sellers, "buys": buys,
         "change_h24": ((best.get("priceChange") or {}).get("h24")),
