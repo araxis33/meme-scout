@@ -55,13 +55,21 @@ async def main():
             pass  # signal handlers via add_signal_handler aren't available on Windows
 
     tasks = [
-        asyncio.create_task(discovery.run_discovery_base(application)),
-        asyncio.create_task(probation.run_probation_watcher(application)),
         asyncio.create_task(pump_dump.run_pump_dump_watcher(application)),
         asyncio.create_task(outcomes.run_outcome_watcher(application)),
         asyncio.create_task(digest.run_digest_watcher(application)),
         asyncio.create_task(publish.run_publisher(application)),
     ]
+
+    # Hunting new coins is off by default since 23.09.2026, for the same kind of
+    # reason: over the 18 days after the 05.09 rework, 13 of the 23 coins it pushed
+    # had no liquidity left at all, and of the coins that did survive it had thrown
+    # away about four in five -- judged once, the second their pool was created,
+    # before anyone had put money in it. The bot now watches the coins we choose.
+    # SCAN_BASE=1 brings discovery and probation back.
+    if config.SCAN_BASE:
+        tasks.append(asyncio.create_task(discovery.run_discovery_base(application)))
+        tasks.append(asyncio.create_task(probation.run_probation_watcher(application)))
 
     # Robinhood Chain is off by default since 05.09.2026, and the reason is a
     # measurement, not a preference: over the previous 14 days it produced 60,736

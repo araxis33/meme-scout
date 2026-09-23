@@ -40,6 +40,7 @@ ROBINHOOD_CHAIN_ID = 4663
 # Robinhood Chain scanning, off by default since 05.09.2026 -- see main.py for
 # the measurement behind it. Set SCAN_ROBINHOOD=1 to bring the chain back.
 SCAN_ROBINHOOD = _int("SCAN_ROBINHOOD", 0) == 1
+SCAN_BASE = _int("SCAN_BASE", 0) == 1
 
 # The floor for LOOKING at a coin, not for showing it. It used to be $50,000,
 # and that one number threw away most of what was worth finding: over the 14 days
