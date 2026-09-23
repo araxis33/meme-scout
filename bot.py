@@ -6,6 +6,7 @@
 решает, пушить сейчас или отложить в дайджест-очередь (см. «тихий режим»).
 """
 import html
+import re
 import logging
 import time
 
@@ -465,11 +466,27 @@ async def _run_check(update: Update, address: str):
     except Exception as exc:  # never leave the "checking" note hanging
         log.exception("check failed for %s", address)
         text = f"Проверка упала: {html.escape(str(exc)[:200])}"
-    try:
-        await note.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-    except Exception:
-        log.exception("could not edit the check reply, sending it anew")
-        await update.message.reply_text(text[:4000], parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    # Telegram caps a message at 4096 characters; with the standard checklist and
+    # the project read a report runs past that, so it goes out in parts, cut
+    # between sections (a blank line) so no HTML tag is split in half.
+    parts, cur = [], ""
+    for block in text.split("\n\n"):
+        if cur and len(cur) + len(block) + 2 > 3900:
+            parts.append(cur)
+            cur = block
+        else:
+            cur = f"{cur}\n\n{block}" if cur else block
+    parts.append(cur)
+    for i, part in enumerate(parts):
+        try:
+            if i == 0:
+                await note.edit_text(part, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+            else:
+                await update.message.reply_text(part, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        except Exception:
+            log.exception("could not send part %d of the check reply", i)
+            await update.message.reply_text(html.unescape(re.sub(r"<[^>]+>", "", part))[:4000],
+                                            disable_web_page_preview=True)
 
 
 async def cmd_check(update: Update, context: ContextTypes.DEFAULT_TYPE):

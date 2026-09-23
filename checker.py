@@ -324,6 +324,82 @@ def _num(v):
         return None
 
 
+RPC = {"base": "https://mainnet.base.org", "robinhood": "https://rpc.mainnet.chain.robinhood.com"}
+TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+# Uniswap v4 keeps every pool inside one contract; buys come out of it, not out of a pair.
+V4_POOL_MANAGER = {"base": "0x498581ff718922c3f8e6a244956af099b2652b2b"}
+SNIPE_BLOCKS = 3  # ~6 s on Base: faster than a person can read the launch post
+
+
+async def _rpc(client, chain, calls):
+    url = RPC.get(chain)
+    if not url:
+        return None
+    batch = [{"jsonrpc": "2.0", "id": i, "method": m, "params": p} for i, (m, p) in enumerate(calls)]
+    for i in range(3):
+        try:
+            r = await client.post(url, json=batch, headers=UA)
+            if r.status_code == 200:
+                return sorted(r.json(), key=lambda x: x.get("id", 0))
+        except (httpx.HTTPError, ValueError):
+            pass
+        await asyncio.sleep(1 + i)
+    return None
+
+
+async def snipers(client, chain, token, creation_block, pool_created_ms, lp_addrs, total_raw, dev):
+    """Who bought in the first seconds of trading, and how much of it they still hold.
+
+    Every scanner reports this ("snipers", "bundles"); a coin whose first blocks
+    were bought up by a handful of wallets usually belongs to those wallets.
+    Trading can open long after the token is deployed, so the window starts at
+    the first pool's creation (DexScreener's time, turned into a block number).
+    """
+    if not total_raw or chain not in RPC:
+        return None
+    start = creation_block
+    if pool_created_ms:
+        head = await _rpc(client, chain, [("eth_getBlockByNumber", ["latest", False])])
+        blk = ((head or [{}])[0] or {}).get("result") or {}
+        if blk:
+            num, ts = int(blk["number"], 16), int(blk["timestamp"], 16)
+            per_block = 2.0 if chain == "base" else 1.0
+            guess = num - int((ts - pool_created_ms / 1000) / per_block)
+            start = max(creation_block or 0, guess - 60)
+    if not start:
+        return None
+    pools = set(lp_addrs) | ({V4_POOL_MANAGER[chain]} if chain in V4_POOL_MANAGER else set())
+    res = await _rpc(client, chain, [("eth_getLogs", [{
+        "address": token, "topics": [TRANSFER],
+        "fromBlock": hex(start), "toBlock": hex(start + 1800)}])])
+    logs = ((res or [{}])[0] or {}).get("result")
+    if not isinstance(logs, list):
+        return None
+    buys = []
+    for lg in logs:
+        t = lg.get("topics") or []
+        if len(t) < 3:
+            continue
+        frm, to = "0x" + t[1][-40:], "0x" + t[2][-40:]
+        if frm in pools and to not in pools and to not in BURN and to != dev:
+            buys.append((int(lg["blockNumber"], 16), to))
+    if not buys:
+        return {"found": False}
+    start = min(b for b, _ in buys)
+    early = sorted({to for b, to in buys if b < start + SNIPE_BLOCKS})
+    same_block = {to for b, to in buys if b == start}
+    bal = await _rpc(client, chain, [("eth_call", [{"to": token, "data": "0x70a08231" + a[2:].rjust(64, "0")}, "latest"])
+                                     for a in early[:60]])
+    held = 0
+    still = 0
+    for x in bal or []:
+        v = int(x.get("result") or "0x0", 16) if str(x.get("result", "")).startswith("0x") else 0
+        held += v
+        still += v > 0
+    return {"found": True, "start_block": start, "early": len(early), "same_block": len(same_block),
+            "still": still, "still_pct": held / total_raw * 100}
+
+
 async def collect(address: str) -> dict:
     """Everything we know about a token, gathered in parallel where possible."""
     address = address.lower()
@@ -360,10 +436,14 @@ async def collect(address: str) -> dict:
             except asyncio.TimeoutError:
                 return {"dev": dev, "launches": [], "timeout": True}
 
-        dev_info, holders, q500, q5000 = await asyncio.gather(
+        creation_block = (tx or {}).get("block_number") or (tx or {}).get("block")
+        dev_info, holders, q500, q5000, snipe = await asyncio.gather(
             dev_part(),
             holder_map(client, chain, address, total_supply, dev, lp_addrs),
-            sell(500), sell(5000))
+            sell(500), sell(5000),
+            snipers(client, chain, address, int(creation_block) if creation_block else None,
+                    min((p.get("pairCreatedAt") or 9e15) for p in pairs) if pairs else None, lp_addrs,
+                    total_supply, dev))
         exits = {usd: q for usd, q in (q500, q5000) if q and q[0] > 0}
 
     liq = sum((p.get("liquidity") or {}).get("usd") or 0 for p in pairs)
@@ -385,12 +465,47 @@ async def collect(address: str) -> dict:
         "socials": [(s.get("type"), s.get("url")) for s in info_block.get("socials") or []],
         "verified": (info or {}).get("is_verified"),
         "holder_count": (token_info or {}).get("holders_count") or (gp or {}).get("holder_count"),
-        "gp": gp or {}, "hp": hp or {}, "dev": dev_info, "holders": holders, "exits": exits,
+        "gp": gp or {}, "hp": hp or {}, "dev": dev_info, "holders": holders, "exits": exits, "snipe": snipe,
+        "pair_liq": {(p.get("pairAddress") or "").lower(): (p.get("liquidity") or {}).get("usd") or 0 for p in pairs},
         "url": best.get("url"),
     }
 
 
 # ---------------------------------------------------------------- verdict
+
+def lp_status(d):
+    """Can the liquidity be pulled? Only a v2-style pool has an LP token to lock;
+    v3/v4 liquidity sits in positions that scanners can't see as locked or not."""
+    gp = d["gp"]
+    dex = gp.get("dex") or []
+    v2_pairs = [x for x in dex if "V2" in (x.get("liquidity_type") or "")]
+    has_v2 = bool(v2_pairs)
+    # GoPlus reports LP holders for one v2 pair (its biggest) and does not see
+    # Aerodrome pools at all. On LAPTOP that pair held pennies of a $1.2M market:
+    # "100% of LP unlocked" there means nothing. So weigh it by its real share.
+    main = max(v2_pairs, key=lambda x: _num(x.get("liquidity")) or 0) if v2_pairs else None
+    pair_liq = d.get("pair_liq", {}).get(((main or {}).get("pair") or "").lower(), 0)
+    share = pair_liq / d["liq"] * 100 if d.get("liq") else 0
+    out = {"v2": has_v2, "only_v3v4": bool(dex) and not has_v2, "locked_pct": None, "top_holder": None,
+           "top_pct": None, "share": share, "pair_liq": pair_liq}
+    holders = gp.get("lp_holders") or []
+    if not has_v2 or not holders:
+        return out
+    locked = 0.0
+    top = None
+    for h in holders:
+        pct = (_num(h.get("percent")) or 0) * 100
+        addr = (h.get("address") or "").lower()
+        tag = (h.get("tag") or "").lower()
+        if str(h.get("is_locked")) == "1" or "lock" in tag or "burn" in tag or addr in BURN:
+            locked += pct
+        elif not top or pct > top[1]:
+            top = (addr, pct, h.get("tag") or "", str(h.get("is_contract")) == "1")
+    out["locked_pct"] = locked
+    if top:
+        out["top_holder"], out["top_pct"], out["top_tag"], out["top_is_contract"] = top
+    return out
+
 
 def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
     """(verdict, stop reasons, warnings, good signs). Rules, not a model."""
@@ -431,6 +546,42 @@ def assess(d: dict) -> tuple[str, list[str], list[str], list[str]]:
         warn.append("контракт можно подменить (прокси)")
     if d.get("verified") is False:
         warn.append("код контракта не опубликован")
+    if flag("transfer_pausable") and owner_live:
+        stop.append("владелец может остановить торговлю")
+    if flag("personal_slippage_modifiable"):
+        stop.append("налог можно задать отдельному кошельку — так запирают продавцов")
+    if flag("trading_cooldown"):
+        warn.append("есть пауза между сделками")
+    if flag("anti_whale_modifiable") and owner_live:
+        warn.append("владелец может менять лимит на размер сделки")
+    if flag("external_call"):
+        warn.append("контракт обращается к чужому контракту — его поведение может поменяться")
+    if flag("honeypot_with_same_creator"):
+        stop.append("этот же автор уже выпускал монеты-ловушки")
+
+    lp = lp_status(d)
+    dev_addr = (d["dev"].get("dev") or "").lower()
+    if lp["v2"] and lp["locked_pct"] is not None and 10 <= lp["share"] < 50:
+        if lp["locked_pct"] < 50 and (lp["top_pct"] or 0) > 50:
+            warn.append(f"доли пула v2 не заблокированы — это {lp['share']:.0f}% всей ликвидности")
+    elif lp["v2"] and lp["locked_pct"] is not None and lp["share"] >= 50:
+        if lp["top_holder"] and lp["top_holder"] == dev_addr and lp["top_pct"] > 50:
+            stop.append(f"ликвидность у автора ({lp['top_pct']:.0f}%) — может забрать в любой момент")
+        elif lp["locked_pct"] < 50 and lp["top_pct"] and lp["top_pct"] > 50 and d["liq"] >= 5000:
+            if lp.get("top_is_contract"):
+                warn.append(f"ликвидность ({lp['top_pct']:.0f}%) лежит в контракте — заблокирована ли, не видно")
+            else:
+                stop.append(f"ликвидность не заблокирована: {lp['top_pct']:.0f}% у обычного кошелька — может вывести")
+        elif lp["locked_pct"] >= 90:
+            good.append(f"ликвидность заблокирована или сожжена ({lp['locked_pct']:.0f}%)")
+
+    sn = d.get("snipe") or {}
+    if sn.get("found") and sn.get("still_pct", 0) > 15:
+        (stop if sn["still_pct"] > 30 else warn).append(
+            f"кошельки, купившие в первые секунды, до сих пор держат {sn['still_pct']:.0f}%")
+    creator_pct = (_num(gp.get("creator_percent")) or 0) * 100
+    if creator_pct > 5 and not any("у автора" in s for s in stop + warn):
+        (stop if creator_pct > 15 else warn).append(f"у автора {creator_pct:.0f}% монет")
 
     if d["liq"] < 5000:
         stop.append(f"ликвидность всего ${d['liq']:,.0f}")
@@ -524,6 +675,93 @@ def _short(a):
     return f"{a[:6]}…{a[-4:]}" if a else "?"
 
 
+def checklist(d: dict) -> list[str]:
+    """The standard scanner table, every line every time - clean items included.
+
+    He asked for what TokenSniffer / DexScanner / GoPlus show, not only our
+    own findings: a report that lists only problems reads as "didn't check".
+    """
+    gp, hp = d["gp"], d["hp"]
+    ok, bad, na = "✅", "❌", "➖"
+    val = lambda k: gp.get(k)
+    yes = lambda k: str(val(k)) == "1"
+    known = lambda k: val(k) not in (None, "")
+    owner = (gp.get("owner_address") or "").lower()
+    renounced = not owner or owner in BURN
+    rows = []
+
+    hp_res = hp.get("honeypotResult") or {}
+    sim = hp.get("simulationResult") or {}
+    if hp_res or known("is_honeypot"):
+        trap = hp_res.get("isHoneypot") or yes("is_honeypot")
+        rows.append(f"{bad if trap else ok} Продать {'нельзя (ловушка)' if trap else 'можно — продажа проходит в симуляции'}")
+    else:
+        rows.append(f"{na} Проверка продажи для этой сети недоступна")
+    bt = _num(sim.get("buyTax"))
+    st = _num(sim.get("sellTax"))
+    if bt is None and known("buy_tax"):
+        bt = (_num(val("buy_tax")) or 0) * 100
+    if st is None and known("sell_tax"):
+        st = (_num(val("sell_tax")) or 0) * 100
+    if bt is not None or st is not None:
+        high = (bt or 0) > 5 or (st or 0) > 5
+        rows.append(f"{bad if high else ok} Налог: покупка {bt or 0:.0f}%, продажа {st or 0:.0f}%")
+    if gp:
+        rows.append(f"{ok if renounced else '⚠️'} Владелец {'отказался от контракта' if renounced else 'на месте: ' + _short(owner)}")
+        pairs = [("is_mintable", "Допечатка монет"), ("is_blacklisted", "Блокировка кошельков"),
+                 ("transfer_pausable", "Остановка торговли"), ("slippage_modifiable", "Смена налога"),
+                 ("personal_slippage_modifiable", "Налог отдельному кошельку"),
+                 ("can_take_back_ownership", "Возврат владения"), ("hidden_owner", "Скрытый владелец"),
+                 ("is_proxy", "Подмена кода (прокси)"), ("selfdestruct", "Самоуничтожение контракта"),
+                 ("is_anti_whale", "Лимит на размер сделки"), ("trading_cooldown", "Пауза между сделками")]
+        present = [name for k, name in pairs if yes(k)]
+        absent = [name for k, name in pairs if known(k) and not yes(k)]
+        if present:
+            tail = " (но владелец отказался)" if renounced and not yes("hidden_owner") else ""
+            rows.append(f"⚠️ Есть в коде: {', '.join(present).lower()}{tail}")
+        if absent:
+            rows.append(f"{ok} Нет в коде: {', '.join(absent).lower()}")
+        rows.append(f"{ok if val('is_open_source') == '1' else bad} Код контракта "
+                    f"{'опубликован' if val('is_open_source') == '1' else 'скрыт'}")
+        if yes("honeypot_with_same_creator"):
+            rows.append(f"{bad} Автор уже выпускал монеты-ловушки")
+    else:
+        rows.append(f"{na} Разбор кода контракта для этой сети недоступен")
+
+    lp = lp_status(d)
+    if lp["v2"] and lp["locked_pct"] is not None and lp["share"] < 10:
+        rows.append(f"➖ Блокировка ликвидности: сканеры видят только малый пул v2 "
+                    f"({lp['share']:.0f}% ликвидности), по основным пулам не проверить")
+    elif lp["v2"] and lp["locked_pct"] is not None:
+        who = ""
+        if lp["top_holder"]:
+            who = (" — у автора" if lp["top_holder"] == (d["dev"].get("dev") or "") else
+                   f" — в контракте {_short(lp['top_holder'])}" if lp.get("top_is_contract") else
+                   f" — у кошелька {_short(lp['top_holder'])}")
+        if lp["locked_pct"] >= 90:
+            rows.append(f"{ok} Ликвидность заблокирована или сожжена: {lp['locked_pct']:.0f}%")
+        else:
+            part = "" if lp["share"] >= 90 else f" (пул v2 — {lp['share']:.0f}% всей ликвидности)"
+            rows.append(f"{bad if lp['share'] >= 50 else '⚠️'} Ликвидность заблокирована на "
+                        f"{lp['locked_pct']:.0f}%, свободно {lp['top_pct'] or 0:.0f}%{who}{part}")
+    elif lp["only_v3v4"]:
+        rows.append(f"{na} Ликвидность в пулах Uniswap v3/v4 — блокировку там не проверить; следи за её падением")
+
+    creator_pct = (_num(val("creator_percent")) or 0) * 100 if known("creator_percent") else None
+    if creator_pct is not None:
+        rows.append(f"{ok if creator_pct <= 5 else bad} У автора сейчас {creator_pct:.1f}% монет")
+
+    sn = d.get("snipe")
+    if sn and sn.get("found"):
+        bundle = f", из них {sn['same_block']} — в самом первом блоке" if sn["same_block"] > 1 else ""
+        mark = bad if sn["still_pct"] > 15 else "⚠️" if sn["early"] >= 10 else ok
+        rows.append(f"{mark} Снайперы (купили в первые ~6 с): {sn['early']}{bundle}; "
+                    f"держат сейчас {sn['still_pct']:.1f}%")
+    elif sn and not sn.get("found"):
+        rows.append(f"{ok} Снайперов на старте не видно")
+    return rows
+
+
 def render(d: dict, project: str | None = None) -> str:
     if d.get("error"):
         return d["error"]
@@ -548,6 +786,8 @@ def render(d: dict, project: str | None = None) -> str:
     elif d["exits"]:
         parts = [f"${k:,} → ${o:,.0f}" for k, (i, o) in sorted(d["exits"].items())]
         L.append("Продать сейчас: " + " · ".join(parts))
+
+    L += ["", "<b>Контракт и ликвидность</b>"] + checklist(d)
 
     dv = d["dev"]
     L += ["", "<b>Кто запустил</b>"]
