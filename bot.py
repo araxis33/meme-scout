@@ -11,7 +11,7 @@ import time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 import config
 import db
@@ -433,12 +433,14 @@ async def _reply_chart(query, chain: str, address: str):
 # --- команды -------------------------------------------------------------
 
 HELP_TEXT = (
-    "Meme-Scout. Слежу за новыми токенами на Base и Robinhood Chain.\n"
-    "Показываю только те, что доказали живую торговлю: новые находки сначала\n"
-    "молча ждут на испытательном сроке и попадают в чат, лишь когда их\n"
-    "реально начали покупать разные люди.\n"
-    "⚠️ Для Robinhood Chain часть проверок недоступна - сеть совсем новая.\n\n"
+    "Meme-Scout.\n\n"
+    "<b>Проверка монеты:</b> просто пришли адрес контракта (или /check &lt;адрес&gt;).\n"
+    "Отвечу за полминуты: ловушка ли контракт, сколько реально продашь, кто автор и\n"
+    "что стало с его прошлыми монетами, связаны ли крупные держатели, и разбор проекта.\n\n"
+    "<b>Слежка:</b> за монетами из watchlist - рост, падение, слив ликвидности.\n"
+    "Поиск новых монет выключен с 23.09 (SCAN_BASE=1 в .env включает обратно).\n\n"
     "Команды:\n"
+    "/check &lt;адрес&gt; - проверить монету\n"
     "/status - статус и размер watchlist\n"
     "/stats - табло точности: что стало с прошлыми алертами\n"
     "/digest - прислать дайджест прямо сейчас\n"
@@ -452,6 +454,45 @@ HELP_TEXT = (
     "/mute [base|robinhood] - выключить алерты (совсем или по одной сети)\n"
     "/unmute [base|robinhood] - включить обратно"
 )
+
+
+async def _run_check(update: Update, address: str):
+    import checker
+
+    note = await update.message.reply_text("🔎 Проверяю, это займёт до минуты…")
+    try:
+        text = await checker.check(address)
+    except Exception as exc:  # never leave the "checking" note hanging
+        log.exception("check failed for %s", address)
+        text = f"Проверка упала: {html.escape(str(exc)[:200])}"
+    try:
+        await note.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    except Exception:
+        log.exception("could not edit the check reply, sending it anew")
+        await update.message.reply_text(text[:4000], parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
+
+async def cmd_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_authorized(update):
+        return
+    import checker
+
+    m = checker.ADDR_RE.search(" ".join(context.args or []))
+    if not m:
+        await update.message.reply_text("Использование: /check <адрес контракта>")
+        return
+    await _run_check(update, m.group(0))
+
+
+async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """A bare contract address in the chat means "check this"."""
+    if not _is_authorized(update) or not update.message or not update.message.text:
+        return
+    import checker
+
+    m = checker.ADDR_RE.search(update.message.text)
+    if m:
+        await _run_check(update, m.group(0))
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -653,10 +694,12 @@ async def cmd_unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def build_application() -> Application:
-    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
+    # concurrent_updates: a half-minute /check must not hold up buttons and other commands.
+    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).concurrent_updates(True).build()
     application.add_handler(CommandHandler("start", cmd_start))
     application.add_handler(CommandHandler("help", cmd_start))
     application.add_handler(CommandHandler("status", cmd_status))
+    application.add_handler(CommandHandler("check", cmd_check))
     application.add_handler(CommandHandler("stats", cmd_stats))
     application.add_handler(CommandHandler("digest", cmd_digest))
     application.add_handler(CommandHandler("chart", cmd_chart))
@@ -669,4 +712,5 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("mute", cmd_mute))
     application.add_handler(CommandHandler("unmute", cmd_unmute))
     application.add_handler(CallbackQueryHandler(on_callback))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     return application
