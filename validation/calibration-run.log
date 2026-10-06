@@ -1,0 +1,928 @@
+  1 young Muse         risk 10
+  2 young CATALYST     risk  6
+  3 young XAUG         risk  9
+  4 young SPIKE        risk 10
+  5 young DTF          risk 10
+  6 young SMOLTING     risk  5
+  7 young Muse Fi      risk  6
+  8 young BELONG       risk 10
+  9 young SPIKE        risk  9
+ 10 young GYND         risk  4
+ 11 young DIH          risk  8
+ 12 young Stryker      risk 10
+ 13 young SMOLTING     risk  9
+skip MUSEWORLD / GITLAWB 1% 'str' object has no attribute 'get'
+Task exception was never retrieved
+future: <Task finished name='Task-279' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-274' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-280' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-282' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-276' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-275' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-277' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-281' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-278' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+ 14 young JEANPHIL     risk 10
+ 15 young VCAT         risk  4
+ 16 young COBIE        risk  8
+ 17 young CYS          risk  6
+ 18 young AGPUB        risk  8
+ 19 young AI           risk  9
+ 20 young DACT         risk 10
+ 21 young VOSF         risk  9
+ 22 young VOSF         risk  9
+ 23 young fomopay      risk  8
+ 24 young DUMBCOIN     risk  9
+ 25 young fomopay      risk  8
+ 26 young W            risk  9
+ 27 young bullcoin     risk  9
+ 28 young bullcoin     risk 10
+ 29 young EQUITY       risk  9
+ 30 young BURN         risk  9
+ 31 young FEELSBAD     risk  9
+ 32 young worldwar     risk  9
+ 33 young AXON         risk  9
+ 34 young RSI          risk  9
+ 35 young Groyper      risk  8
+ 36 young INU          risk  8
+ 37 young EQUITY       risk  9
+ 38 young HITCOIN      risk  9
+ 39 young Berth        risk  9
+ 40 mid   BSW          risk 10
+ 41 mid   cbBTC        risk  1
+ 42 mid   METAc        risk 10
+ 43 mid   JitoSOL      risk  9
+ 44 mid   NVDAc        risk 10
+ 45 mid   SPIKE        risk  9
+ 46 mid   VVV          risk  2
+ 47 mid   MSTRc        risk  6
+ 48 mid   cbXRP        risk  9
+ 49 mid   AAPLc        risk 10
+ 50 mid   EURC         risk  1
+ 51 mid   GOOGLc       risk 10
+ 52 mid   SNDKc        risk  6
+ 53 mid   AMZNc        risk 10
+ 54 mid   DRV          risk  4
+ 55 mid   MSFTc        risk 10
+ 56 mid   TSLAc        risk  4
+ 57 mid   SPCXc        risk 10
+ 58 mid   PROS         risk 10
+ 59 mid   SOSO         risk  8
+ 60 mid   CTR          risk 10
+ 61 mid   cbZEC        risk 10
+ 62 mid   ZEST         risk  8
+ 63 mid   JitoSOL      risk  3
+ 64 mid   Basecat      risk 10
+ 65 mid   NVDAc        risk 10
+ 66 mid   O            risk 10
+skip STONKEX / WETH 1% 'str' object has no attribute 'get'
+ 67 mid   FOLKS        risk  6
+ 68 mid   TIBBIR       risk  3
+ 69 mid   QUID         risk  3
+ 70 mid   LAPTOP       risk  4
+ 71 mid   DOT          risk  4
+ 72 mid   PLAY         risk  3
+ 73 mid   Surplus      risk 10
+ 74 mid   cbHYPE       risk 10
+ 75 mid   UP           risk  3
+ 76 mid   CP           risk  5
+ 77 old   WETH         risk  1
+ 78 old   AERO         risk  2
+ 79 old   SCALE        risk  8
+ 80 old   AERO         risk  1
+ 81 old   USDT         risk  4
+ 82 old   ZEN          risk  1
+ 83 old   cbETH        risk  1
+ 84 old   VIRTUAL      risk  3
+ 85 old   MORPHO       risk  1
+ 86 old   wtCOIN       risk  8
+ 87 old   B3           risk  3
+ 88 old   NOCK         risk 10
+ 89 old   ICP          risk  6
+ 90 old   BNKR         risk  2
+ 91 old   bsdETH       risk  9
+ 92 old   AAVE         risk  2
+ 93 old   EDEL         risk  3
+ 94 old   wstETH       risk  1
+ 95 old   TRUE         risk  7
+ 96 old   msUSD        risk  6
+ 97 old   msUSD        risk  9
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\validation\calibration_sample.py", line 26, in <module>
+    import checker  # noqa: E402
+    ^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 26, in <module>
+    import httpx
+ModuleNotFoundError: No module named 'httpx'
+ 98 young VOSF         risk  9
+ 99 young ETN          risk  9
+100 young Muse Charm   risk  6
+101 young Horse        risk  8
+102 young ETN          risk  9
+103 young BEGJEV       risk  9
+104 young TAO          risk  6
+skip MUSEWORLD 'str' object has no attribute 'get'
+Task exception was never retrieved
+future: <Task finished name='Task-178' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-171' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-172' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-169' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-176' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-177' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-173' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-170' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-175' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-174' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+105 young SI           risk  8
+106 young PEAK         risk 10
+107 young DGUY         risk  4
+108 young SYBT         risk  8
+109 young BRAINARM     risk  9
+110 young EMBOW        risk  9
+111 young BCDB         risk 10
+skip Botanica 'str' object has no attribute 'get'
+Task exception was never retrieved
+future: <Task finished name='Task-342' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-347' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-343' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 294, in fund
+    tt = await bs(client, chain, f"/api/v2/addresses/{r['address']}/token-transfers", {"token": token})
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-344' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-345' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-348' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-350' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-341' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-346' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+Task exception was never retrieved
+future: <Task finished name='Task-349' coro=<holder_map.<locals>.fund() done, defined at C:\Users\User\.local\bin\meme-scout\checker.py:288> exception=RuntimeError('Cannot send a request, as the client has been closed.')>
+Traceback (most recent call last):
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 291, in fund
+    r["funder"], _, _ = await funder_of(client, chain, r["address"], max_pages=2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 176, in funder_of
+    txs, complete = await address_txs(client, chain, address, max_pages)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 136, in address_txs
+    data = await bs(client, chain, f"/api/v2/addresses/{address}/transactions", params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 124, in bs
+    return await _get(client, f"{base}{path}", params) if base else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\checker.py", line 66, in _get
+    r = await client.get(url, params=params, headers=UA)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\.local\bin\meme-scout\.venv\Lib\site-packages\httpx\_client.py", line 1616, in send
+    raise RuntimeError("Cannot send a request, as the client has been closed.")
+RuntimeError: Cannot send a request, as the client has been closed.
+112 young ISTONKS      risk  8
+113 young SHIT         risk 10
+114 young KGEN         risk 10
+115 young OCCUPY       risk  8
+116 young RUNUP        risk  8
+117 young STBU         risk  7
+118 young LOVE         risk 10
+119 young cobee        risk  9
+120 mid   ZRO          risk  3
+121 mid   deSPXA       risk  8
+122 mid   STONKEX      risk  3
+123 mid   wtSGOV       risk  6
+124 old   FLOCK        risk  1
+125 old   eUSD         risk  9
+126 old   DIEM         risk  1
+127 old   VCNT         risk 10
+128 old   cbLTC        risk  6
+129 old   VELVET       risk  2
+130 old   uSOL         risk  5
+131 old   BRETT        risk  1
+132 old   tBTC         risk  3
+133 old   ZORA         risk  4
+134 old   ELSA         risk  4
+135 old   LSK          risk  8
+136 old   cbADA        risk  4
+137 old   XSGD         risk  6
+138 old   GITLAWB      risk  6
+139 old   LBTC         risk 10
+140 old   PEPTAI       risk 10
